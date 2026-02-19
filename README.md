@@ -1,36 +1,24 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🌙 Qira.ai - AI Tadarus Tracker
 
-## Getting Started
+![Next.js](https://img.shields.io/badge/Next.js-black?style=for-the-badge&logo=next.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 
-First, run the development server:
+> 🚧 **CAUTION: UNDER ACTIVE DEVELOPMENT** 🚧  
+> *This project is currently in the early development phase. Features and integrations are subject to change.*
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 📖 About The Project
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**Qira.ai** is a smart, voice-activated Tadarus (Quran reading) tracker. Designed to help Muslims maintain their daily Quran reading targets, especially during Ramadan. 
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Instead of manually logging chapters (Juz) or verses (Ayah), users can simply speak their progress naturally (e.g., *"Alhamdulillah, I just finished reading from Al-Baqarah verse 200 to Ali Imran verse 50"*). Qira.ai uses **AI Speech-to-Text (Groq/Whisper)** and **LLM Data Extraction (Gemini)** to automatically calculate the exact progress, adjust future daily targets dynamically, and keep users on track to finish their Khatam goals.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## ✨ Core Features (Planned)
+- 🎙️ **Natural Voice Tracking:** Log your tadarus progress using voice notes.
+- 🧠 **AI-Powered Extraction:** Automatically detects Surah and Ayah boundaries from natural speech.
+- 📊 **Dynamic Goal Adjustment:** Automatically recalculates daily reading targets if you fall behind or read ahead.
+- 🛡️ **Quranic Validation:** Cross-checks input against standard Quran metadata to prevent errors.
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+*Built with passion for the Ummah.*
