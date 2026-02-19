@@ -1,5 +1,6 @@
 "use client";
 
+import Swal from 'sweetalert2';
 import { useState, useRef, useEffect } from "react";
 import { Mic, Square, Loader2 } from "lucide-react"; // Waveform udah dihapus biar nggak error!
 
@@ -8,14 +9,14 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [recordingTime, setRecordingTime] = useState(0);
-  
+
   // Array untuk menyimpan 30 bar gelombang suara
-  const [volumes, setVolumes] = useState<number[]>(new Array(30).fill(0)); 
-  
+  const [volumes, setVolumes] = useState<number[]>(new Array(30).fill(0));
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
@@ -24,23 +25,42 @@ export default function Home() {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    
+
     osc.type = "sine";
     osc.frequency.setValueAtTime(type === "start" ? 880 : 440, ctx.currentTime);
-    
+
     gain.gain.setValueAtTime(0.1, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-    
+
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + 0.1);
   };
 
+  // Bunyi "TET-TOT" untuk error
+  const playErrorBeep = () => {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "sawtooth"; // Gelombang lebih kasar khas suara error
+    osc.frequency.setValueAtTime(150, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.3);
+
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.3);
+  };
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
+
       const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
       audioContextRef.current = new AudioContextCtor();
       analyserRef.current = audioContextRef.current.createAnalyser();
@@ -52,14 +72,14 @@ export default function Home() {
       const updateVolume = () => {
         if (!analyserRef.current) return;
         analyserRef.current.getByteFrequencyData(dataArray);
-        
+
         // Mengambil 30 titik data untuk 30 bar gelombang
         const newVolumes = [];
         for (let i = 0; i < 30; i++) {
           newVolumes.push(dataArray[i] || 0);
         }
         setVolumes(newVolumes);
-        
+
         animationFrameRef.current = requestAnimationFrame(updateVolume);
       };
       updateVolume();
@@ -108,7 +128,30 @@ export default function Home() {
           if (data.success) {
             setTranscript(data.text);
           } else {
-            alert("Error: " + data.error);
+            if (data.success) {
+              setTranscript(data.text);
+              // Optional: Munculin notif sukses kecil di pojok
+              Swal.fire({
+                title: "Masya Allah!",
+                text: "Tadarusmu berhasil dicatat.",
+                icon: "success",
+                toast: true,
+                position: "top-end",
+                showConfirmButton: false,
+                timer: 3000
+              });
+            } else {
+              // Kalau data nggak valid (Gatekeeper bereaksi)
+              playErrorBeep();
+              setTranscript(""); // Kosongkan transcript karena gagal
+              Swal.fire({
+                title: "Tunggu Dulu...",
+                text: data.error,
+                icon: "warning",
+                confirmButtonColor: "#3b82f6",
+                confirmButtonText: "Ulangi Rekaman"
+              });
+            }
           }
         } catch (err) {
           console.error(err);
@@ -117,10 +160,10 @@ export default function Home() {
           setIsLoading(false);
         }
       };
-      
+
       mediaRecorderRef.current.stop();
       playBeep("stop");
-      
+
       if (timerRef.current) clearInterval(timerRef.current);
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
       setVolumes(new Array(30).fill(0)); // Reset gelombang jadi rata
@@ -143,7 +186,7 @@ export default function Home() {
   }, []);
 
   return (
-    <main 
+    <main
       className="min-h-screen relative flex flex-col items-center justify-center p-6 font-sans overflow-hidden"
       style={{
         // URL gambar Quran gratis dari Unsplash
@@ -157,7 +200,7 @@ export default function Home() {
 
       {/* Main Card */}
       <div className="relative z-10 w-full max-w-md bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 flex flex-col items-center text-center space-y-8 border border-white/20">
-        
+
         {/* Header */}
         <div className="space-y-2">
           <h1 className="text-4xl font-extrabold text-blue-900 tracking-tight drop-shadow-sm">Qira.ai</h1>
@@ -166,14 +209,14 @@ export default function Home() {
 
         {/* Mic Button & Waveform Area */}
         <div className="flex flex-col items-center justify-center min-h-[220px] w-full">
-          
+
           <button
             onClick={isRecording ? stopRecording : startRecording}
             disabled={isLoading}
             className={`
               relative z-10 flex items-center justify-center w-20 h-20 rounded-full transition-all duration-300 shadow-xl border-4 border-white
-              ${isRecording 
-                ? "bg-rose-500 hover:bg-rose-600 scale-95" 
+              ${isRecording
+                ? "bg-rose-500 hover:bg-rose-600 scale-95"
                 : "bg-blue-600 hover:bg-blue-700 hover:scale-105"}
               ${isLoading ? "opacity-50 cursor-not-allowed" : ""}
             `}
@@ -186,11 +229,11 @@ export default function Home() {
               <Mic className="w-8 h-8 text-white" />
             )}
           </button>
-          
+
           {/* Bar Waveform Visualizer (Tampil pas rekaman aja) */}
           <div className={`mt-8 flex items-end justify-center gap-[3px] h-12 transition-opacity duration-300 ${isRecording ? "opacity-100" : "opacity-0 hidden"}`}>
             {volumes.map((vol, idx) => (
-              <div 
+              <div
                 key={idx}
                 className="w-1.5 bg-rose-500 rounded-full transition-all duration-75"
                 // Minimal tinggi 4px, maksimal 48px
