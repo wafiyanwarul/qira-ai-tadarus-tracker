@@ -1,32 +1,36 @@
-// app/api/progress/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { quranMetadata } from '@/lib/quranData';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
+        const targetKhatam = parseInt(req.nextUrl.searchParams.get('target') || '1');
+
         const logs = await prisma.progressLog.findMany({
-            where: { userId: 'guest-user' }
+            where: { userId: 'guest-user' },
+            orderBy: { createdAt: 'desc' } // Urutkan dari yang terbaru
         });
 
-        const totalPagesRead = logs.reduce((sum, log) => sum + log.totalPagesRead, 0);
-
-        // Hitung halaman yang dibaca HARI INI (berdasarkan tanggal lokal)
         const today = new Date().toISOString().split('T')[0];
-        const pagesReadToday = logs
-            .filter(log => new Date(log.createdAt).toISOString().split('T')[0] === today)
-            .reduce((sum, log) => sum + log.totalPagesRead, 0);
+        const todayLogsRaw = logs.filter(log => new Date(log.createdAt).toISOString().split('T')[0] === today);
 
-        const targetKhatam = 3;
+        // Format log untuk ditampilkan di Rekap
+        const todayLogs = todayLogsRaw.map(log => ({
+            start: `${quranMetadata[log.startSurah]?.name} ${log.startAyah}`,
+            end: `${quranMetadata[log.endSurah]?.name} ${log.endAyah}`,
+            pages: log.totalPagesRead,
+            time: new Date(log.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+        }));
+
+        const totalPagesRead = logs.reduce((sum, log) => sum + log.totalPagesRead, 0);
+        const pagesReadToday = todayLogsRaw.reduce((sum, log) => sum + log.totalPagesRead, 0);
+
         const totalPagesTarget = targetKhatam * 604;
         const daysLeft = 29;
 
-        // Target asli harian (misal: 62.5 halaman/hari)
         const baseDailyTarget = totalPagesTarget / 30;
-
-        // Sisa target hari ini (Target Harian - Yang udah dibaca hari ini)
         const remainingToday = Math.max(0, baseDailyTarget - pagesReadToday);
-
-        const percentage = (totalPagesRead / totalPagesTarget) * 100;
+        const percentage = Math.min(100, (totalPagesRead / totalPagesTarget) * 100);
 
         return NextResponse.json({
             success: true,
@@ -37,9 +41,9 @@ export async function GET() {
                 remainingToday: Math.round(remainingToday * 10) / 10,
                 dailyTarget: Math.round(baseDailyTarget * 10) / 10,
                 percentage: Math.round(percentage * 10) / 10,
+                todayLogs // Kirim data rekap ke Frontend
             }
         });
-
     } catch (error) {
         return NextResponse.json({ error: 'Gagal mengambil data progress.' }, { status: 500 });
     }
