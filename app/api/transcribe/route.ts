@@ -1,12 +1,13 @@
 // app/api/transcribe/route.ts
-import { validateTadarusInput } from '@/lib/quranData';
 import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
-import { GoogleGenAI } from '@google/genai'; // Import SDK Gemini terbaru
+import { GoogleGenAI } from '@google/genai';
+import { validateTadarusInput, calculateTotalAyahs } from '@/lib/quranData';
+import { prisma } from '@/lib/prisma';
+import { env } from '@/src/config/env';
 
-// Inisialisasi API Clients
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const groq = new Groq({ apiKey: env.GROQ_API_KEY });
+const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
 
 export async function POST(req: Request) {
     try {
@@ -17,9 +18,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'File audio tidak ditemukan.' }, { status: 400 });
         }
 
-        // ==========================================
-        // 1. PROSES AUDIO KE TEKS (GROQ WHISPER)
-        // ==========================================
+        // 1. WHISPER: Audio to Text
         const transcription = await groq.audio.transcriptions.create({
             file: audioFile,
             model: 'whisper-large-v3',
@@ -27,85 +26,83 @@ export async function POST(req: Request) {
             response_format: 'json',
             language: 'id',
         });
-
         const rawText = transcription.text;
 
-        // ==========================================
-        // 2. PROSES TEKS KE DATA TERSTRUKTUR (GEMINI)
-        // ==========================================
-        // Ini adalah "Prompt Engineering" agar AI paham tugasnya
+        // 2. GEMINI: Text to JSON
         const systemInstruction = `
-      Kamu adalah asisten ahli ekstraksi data tadarus Al-Quran.
-      Tugasmu: Ambil teks ucapan user dan ubah HANYA menjadi format JSON yang valid.
-      
-      Pemetaan Nomor Surah (Penting!):
-      - Al-Fatihah = 1
-      - Al-Baqarah = 2
-      - Ali 'Imran / Al-Imran = 3
-      - An-Nisa = 4
-      - Al-Ma'idah = 5
-      (dan seterusnya sesuai urutan mushaf standar)
+        Kamu adalah asisten ahli ekstraksi data tadarus Al-Quran.
+        Tugasmu: Ambil teks ucapan user dan ubah HANYA menjadi format JSON yang valid.
+        
+        Pemetaan Nomor Surah:
+        - Al-Fatihah = 1
+        - Al-Baqarah = 2
+        - Ali 'Imran = 3
+        (dan seterusnya sesuai mushaf)
 
-      Format JSON yang diminta:
-      {
-        "start_surah": <nomor surat awal, tipe angka>,
-        "start_ayah": <nomor ayat awal, tipe angka>,
-        "end_surah": <nomor surat akhir, tipe angka>,
-        "end_ayah": <nomor ayat akhir, tipe angka>
-      }
+        Format output JSON:
+        {
+            "start_surah": <nomor surat awal>,
+            "start_ayah": <nomor ayat awal>,
+            "end_surah": <nomor surat akhir>,
+            "end_ayah": <nomor ayat akhir>
+        }
+        
+        Aturan: Jika hanya 1 surah disebut, start_surah dan end_surah harus bernilai sama. Jangan tambahkan teks markdown.
+        `;
 
-      Aturan:
-      1. Jika user hanya menyebutkan 1 nama surat (contoh: "Surah Al-Imran ayat 35 sampai 112"), maka start_surah dan end_surah bernilai sama (yaitu 3).
-      2. Jangan tambahkan teks markdown, penjelasan, atau apapun selain JSON murni.
-      3. Jika data tidak lengkap, isi dengan null.
-    `;
-
-        // Memanggil model Gemini 2.5 Flash (sangat cepat untuk task ringan)
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: rawText,
             config: {
                 systemInstruction: systemInstruction,
-                responseMimeType: 'application/json', // Paksa output jadi JSON
+                responseMimeType: 'application/json',
             }
         });
 
-        // Ambil hasil JSON dari Gemini dan ubah jadi Object JavaScript
         const jsonString = response.text;
         const extractedData = JSON.parse(jsonString || '{}');
 
-        // --- FITUR BARU: GATEKEEPER VALIDATION ---
-        // Pastikan data yang diekstrak AI itu lengkap angkanya
+        // 3. GATEKEEPER VALIDATION
         if (!extractedData.start_surah || !extractedData.start_ayah || !extractedData.end_surah || !extractedData.end_ayah) {
             return NextResponse.json({
                 success: false,
-                error: 'Kurang spesifik nih. Coba sebutin lengkap dari surah apa ayat berapa, sampai surah apa ayat berapa ya.',
-                text: rawText
+                error: 'Kurang spesifik nih. Coba sebutin lengkap surah dan ayatnya ya.'
             });
         }
 
-        // Lakukan crosscheck ke metadata asli Al-Quran
         const validation = validateTadarusInput(
-            extractedData.start_surah,
-            extractedData.start_ayah,
-            extractedData.end_surah,
-            extractedData.end_ayah
+            extractedData.start_surah, extractedData.start_ayah,
+            extractedData.end_surah, extractedData.end_ayah
         );
 
         if (!validation.isValid) {
-            return NextResponse.json({
-                success: false,
-                error: validation.message,
-                text: rawText
-            });
+            return NextResponse.json({ success: false, error: validation.message });
         }
-        // ------------------------------------------
 
-        // Jika lolos validasi, kembalikan data sukses
+        // 4. CALCULATE TOTAL AYAHS
+        const totalAyahs = calculateTotalAyahs(
+            extractedData.start_surah, extractedData.start_ayah,
+            extractedData.end_surah, extractedData.end_ayah
+        );
+
+        // 5. INSERT TO DATABASE (SUPABASE VIA PRISMA)
+        const savedRecord = await prisma.progressLog.create({
+            data: {
+                startSurah: extractedData.start_surah,
+                startAyah: extractedData.start_ayah,
+                endSurah: extractedData.end_surah,
+                endAyah: extractedData.end_ayah,
+                totalAyahsRead: totalAyahs,
+                rawTranscript: rawText,
+                // userId: 'guest-user' (Otomatis dari schema)
+            }
+        });
+
+        // Kembalikan response sukses ke Frontend
         return NextResponse.json({
             success: true,
             text: rawText,
-            data: extractedData
+            data: savedRecord // Sekarang kita kirim data dari database!
         });
 
     } catch (error) {

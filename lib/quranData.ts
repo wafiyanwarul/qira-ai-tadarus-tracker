@@ -44,3 +44,27 @@ export function validateTadarusInput(startSurah: number, startAyah: number, endS
 
     return { isValid: true, message: "Valid" };
 }
+
+// caculate total ayat dari rentang surah/ayat yang diberikan, misal dari Al-Baqarah 10 sampai Ali 'Imran 5
+export function calculateTotalAyahs(startSurah: number, startAyah: number, endSurah: number, endAyah: number): number {
+    let total = 0;
+
+    if (startSurah === endSurah) {
+        // Kalau masih di surah yang sama (contoh: Al-Baqarah 10 - 20)
+        total = endAyah - startAyah + 1;
+    } else {
+        // 1. Hitung sisa ayat di surah pertama
+        const sisaSurahPertama = quranMetadata[startSurah].totalAyahs - startAyah + 1;
+        total += sisaSurahPertama;
+
+        // 2. Hitung total ayat di surah-surah pertengahan (kalau ada lompatan, misal dari Surah 2 ke Surah 4)
+        for (let i = startSurah + 1; i < endSurah; i++) {
+            total += quranMetadata[i].totalAyahs;
+        }
+
+        // 3. Tambahkan ayat di surah terakhir
+        total += endAyah;
+    }
+
+    return total;
+}
