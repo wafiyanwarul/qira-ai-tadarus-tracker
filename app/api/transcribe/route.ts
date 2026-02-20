@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import { GoogleGenAI } from '@google/genai';
-import { validateTadarusInput, calculateTotalAyahs } from '@/lib/quranData';
+import { validateTadarusInput, calculatePagesRead } from '@/lib/quranData';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/src/config/env';
 
@@ -79,8 +79,8 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: false, error: validation.message });
         }
 
-        // 4. CALCULATE TOTAL AYAHS
-        const totalAyahs = calculateTotalAyahs(
+        // 4. CALCULATE ESTIMATED PAGES
+        const totalPages = calculatePagesRead(
             extractedData.start_surah, extractedData.start_ayah,
             extractedData.end_surah, extractedData.end_ayah
         );
@@ -92,9 +92,8 @@ export async function POST(req: Request) {
                 startAyah: extractedData.start_ayah,
                 endSurah: extractedData.end_surah,
                 endAyah: extractedData.end_ayah,
-                totalAyahsRead: totalAyahs,
+                totalPagesRead: totalPages, // Pakai field yang baru
                 rawTranscript: rawText,
-                // userId: 'guest-user' (Otomatis dari schema)
             }
         });
 

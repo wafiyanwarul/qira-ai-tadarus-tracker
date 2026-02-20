@@ -23,7 +23,9 @@ model ProgressLog {
   startAyah      Int
   endSurah       Int
   endAyah        Int
-  totalAyahsRead Int
+  
+  // BERUBAH: Dari totalAyahsRead (Int) menjadi totalPagesRead (Float)
+  totalPagesRead Float    
   
   rawTranscript  String?  @db.Text
   createdAt      DateTime @default(now())
