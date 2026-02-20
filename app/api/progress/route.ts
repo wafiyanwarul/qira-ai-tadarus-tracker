@@ -4,43 +4,43 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
     try {
-        // 1. Ambil semua log tadarus user (sementara hardcode 'guest-user' untuk MVP)
         const logs = await prisma.progressLog.findMany({
             where: { userId: 'guest-user' }
         });
 
-        // 2. Jumlahkan total halaman yang sudah dibaca
         const totalPagesRead = logs.reduce((sum, log) => sum + log.totalPagesRead, 0);
 
-        // 3. Kalkulasi Dinamis (Asumsi: Target Khatam 3x sebulan)
-        // 1x Khatam = 604 Halaman. 3x Khatam = 1812 Halaman.
+        // Hitung halaman yang dibaca HARI INI (berdasarkan tanggal lokal)
+        const today = new Date().toISOString().split('T')[0];
+        const pagesReadToday = logs
+            .filter(log => new Date(log.createdAt).toISOString().split('T')[0] === today)
+            .reduce((sum, log) => sum + log.totalPagesRead, 0);
+
         const targetKhatam = 3;
         const totalPagesTarget = targetKhatam * 604;
-
-        // Sisa hari puasa (Untuk MVP kita asumsikan sisa 29 hari)
-        // Nanti bisa dibikin dinamis pakai Date() menghitung selisih ke Idul Fitri
         const daysLeft = 29;
 
-        // Rumus The Gatekeeper of Target:
-        const remainingPages = Math.max(0, totalPagesTarget - totalPagesRead);
-        const dailyTarget = remainingPages / daysLeft;
+        // Target asli harian (misal: 62.5 halaman/hari)
+        const baseDailyTarget = totalPagesTarget / 30;
 
-        // Persentase
+        // Sisa target hari ini (Target Harian - Yang udah dibaca hari ini)
+        const remainingToday = Math.max(0, baseDailyTarget - pagesReadToday);
+
         const percentage = (totalPagesRead / totalPagesTarget) * 100;
 
         return NextResponse.json({
             success: true,
             data: {
-                totalPagesRead: Math.round(totalPagesRead * 10) / 10, // Bulatkan 1 desimal
+                totalPagesRead: Math.round(totalPagesRead * 10) / 10,
                 totalPagesTarget,
-                remainingPages: Math.round(remainingPages * 10) / 10,
-                dailyTarget: Math.round(dailyTarget * 10) / 10,
+                pagesReadToday: Math.round(pagesReadToday * 10) / 10,
+                remainingToday: Math.round(remainingToday * 10) / 10,
+                dailyTarget: Math.round(baseDailyTarget * 10) / 10,
                 percentage: Math.round(percentage * 10) / 10,
             }
         });
 
     } catch (error) {
-        console.error('Progress API Error:', error);
         return NextResponse.json({ error: 'Gagal mengambil data progress.' }, { status: 500 });
     }
 }

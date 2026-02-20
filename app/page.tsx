@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Mic, Square, Loader2, BookOpen, Target, Sparkles } from "lucide-react";
+import { Mic, Square, Loader2, BookOpen, Target, Sparkles, Clock } from "lucide-react";
 import Swal from 'sweetalert2';
+import confetti from 'canvas-confetti';
 
 export default function Home() {
   const [isRecording, setIsRecording] = useState(false);
@@ -10,12 +11,19 @@ export default function Home() {
   const [recordingTime, setRecordingTime] = useState(0);
   const [volumes, setVolumes] = useState<number[]>(new Array(30).fill(0));
 
-  // State untuk Data Progress
   const [progress, setProgress] = useState({
     totalPagesRead: 0,
-    totalPagesTarget: 1812, // 3x Khatam
+    totalPagesTarget: 1812,
+    pagesReadToday: 0,
+    remainingToday: 62.5,
     dailyTarget: 62.5,
     percentage: 0
+  });
+
+  const [prayerRecommendation, setPrayerRecommendation] = useState({
+    upcomingCount: 5,
+    pagesPerPrayer: 12.5,
+    nextPrayerName: "Subuh"
   });
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -25,24 +33,69 @@ export default function Home() {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
 
-  // Fungsi fetch data progress dari database
+  // 1. Fetch Progress dari Database
   const fetchProgress = async () => {
     try {
       const res = await fetch('/api/progress');
       const data = await res.json();
       if (data.success) {
         setProgress(data.data);
+        calculatePrayerTargets(data.data.remainingToday);
       }
     } catch (err) {
       console.error("Gagal load progress", err);
     }
   };
 
-  // Ambil data pertama kali web dibuka
+  // 2. Kalkulasi Sholat (API Aladhan untuk Trenggalek)
+  const calculatePrayerTargets = async (remainingPages: number) => {
+    try {
+      // Fetch jadwal sholat hari ini khusus area Trenggalek
+      const res = await fetch('https://api.aladhan.com/v1/timingsByCity?city=Trenggalek&country=Indonesia&method=11');
+      const data = await res.json();
+      const timings = data.data.timings;
+
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMin = now.getMinutes();
+      const currentTimeStr = `${currentHour.toString().padStart(2, '0')}:${currentMin.toString().padStart(2, '0')}`;
+
+      // Daftar sholat wajib
+      const prayers = [
+        { name: "Subuh", time: timings.Fajr },
+        { name: "Dzuhur", time: timings.Dhuhr },
+        { name: "Ashar", time: timings.Asr },
+        { name: "Maghrib", time: timings.Maghrib },
+        { name: "Isya", time: timings.Isha }
+      ];
+
+      // Cari sholat yang belum lewat jamnya
+      const upcomingPrayers = prayers.filter(p => p.time > currentTimeStr);
+
+      if (upcomingPrayers.length > 0) {
+        setPrayerRecommendation({
+          upcomingCount: upcomingPrayers.length,
+          pagesPerPrayer: Math.ceil((remainingPages / upcomingPrayers.length) * 10) / 10,
+          nextPrayerName: upcomingPrayers[0].name
+        });
+      } else {
+        // Kalau udah lewat Isya, target dilempar ke besok pagi
+        setPrayerRecommendation({
+          upcomingCount: 1,
+          pagesPerPrayer: remainingPages,
+          nextPrayerName: "Besok Subuh"
+        });
+      }
+    } catch (err) {
+      console.error("Gagal load jadwal sholat", err);
+    }
+  };
+
   useEffect(() => {
     fetchProgress();
   }, []);
 
+  // --- SOUND EFFECTS ---
   const playBeep = (type: "start" | "stop") => {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
     const osc = ctx.createOscillator();
@@ -55,6 +108,29 @@ export default function Home() {
     gain.connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + 0.1);
+  };
+
+  // Suara Sukses yang Estetik (Chord Arpeggio)
+  const playSuccessChime = () => {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const frequencies = [523.25, 659.25, 783.99, 1046.50]; // C Major Chord (C5, E5, G5, C6)
+
+    frequencies.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+
+      const startTime = ctx.currentTime + (i * 0.1);
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(0.1, startTime + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.5);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(startTime);
+      osc.stop(startTime + 0.5);
+    });
   };
 
   const playErrorBeep = () => {
@@ -70,6 +146,31 @@ export default function Home() {
     gain.connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + 0.3);
+  };
+
+  const triggerConfetti = () => {
+    const duration = 3000;
+    const end = Date.now() + duration;
+
+    const frame = () => {
+      confetti({
+        particleCount: 5,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+        colors: ['#6B8E6B', '#D97757', '#F3EFE8']
+      });
+      confetti({
+        particleCount: 5,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+        colors: ['#6B8E6B', '#D97757', '#F3EFE8']
+      });
+
+      if (Date.now() < end) requestAnimationFrame(frame);
+    };
+    frame();
   };
 
   const startRecording = async () => {
@@ -127,21 +228,33 @@ export default function Home() {
         formData.append("audio", audioFile);
 
         try {
-          const res = await fetch("/api/transcribe", {
-            method: "POST",
-            body: formData,
-          });
+          const res = await fetch("/api/transcribe", { method: "POST", body: formData });
           const data = await res.json();
 
           if (data.success) {
-            // Refresh angka progress bar di UI
-            fetchProgress();
+            playSuccessChime(); // Bunyikan notif magis
+            new Audio('/alhamdulillah.mp3').play();
+            await fetchProgress(); // Refresh data progress terbaru
+
+            // Cek apakah target hari ini terpenuhi
+            const isTargetMet = (progress.pagesReadToday + data.data.totalPagesRead) >= progress.dailyTarget;
+
+            if (isTargetMet) triggerConfetti();
 
             Swal.fire({
-              title: "Masya Allah!",
-              html: `Tadarus tercatat.<br/><span style="color:#6B8E6B; font-weight:bold;">+${data.data.totalPagesRead} Halaman</span>`,
+              title: isTargetMet ? "Alhamdulillah! 🎉" : "Masya Allah!",
+              html: `
+                <div class="text-left space-y-2 mt-2">
+                  <p class="text-slate-600">Tadarus tercatat dengan baik.</p>
+                  <div class="bg-[#EAF0EA] p-3 rounded-xl border border-[#c7dcc7]">
+                    <p class="text-sm font-semibold text-[#3E4F3E]">Surah ${data.data.startSurah}:${data.data.startAyah} - Surah ${data.data.endSurah}:${data.data.endAyah}</p>
+                    <p class="text-lg font-black text-[#6B8E6B]">+${data.data.totalPagesRead} Halaman</p>
+                  </div>
+                  ${isTargetMet ? '<p class="text-[#D97757] font-bold text-center mt-3">Target harianmu hari ini TUNTAS!</p>' : ''}
+                </div>
+              `,
               icon: "success",
-              confirmButtonColor: "#6B8E6B", // Matcha color
+              confirmButtonColor: "#6B8E6B",
             });
           } else {
             playErrorBeep();
@@ -149,7 +262,7 @@ export default function Home() {
               title: "Tunggu Dulu...",
               text: data.error,
               icon: "warning",
-              confirmButtonColor: "#D97757", // Terracotta color
+              confirmButtonColor: "#D97757",
               confirmButtonText: "Ulangi"
             });
           }
@@ -179,9 +292,8 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#FDFBF7] flex flex-col items-center justify-center p-6 font-sans text-[#4A4238]">
 
-      <div className="w-full max-w-md bg-white rounded-[2rem] shadow-sm border border-[#E5E0D8] p-8 flex flex-col items-center space-y-8 relative overflow-hidden">
+      <div className="w-full max-w-md bg-white rounded-[2rem] shadow-sm border border-[#E5E0D8] p-8 flex flex-col items-center space-y-7 relative overflow-hidden">
 
-        {/* Dekorasi Estetik */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-[#F3EFE8] rounded-bl-full -z-0 opacity-50" />
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-[#EAF0EA] rounded-tr-full -z-0 opacity-50" />
 
@@ -219,33 +331,58 @@ export default function Home() {
           {/* Progress Bar */}
           <div className="w-full h-3 bg-[#E5E0D8] rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#6B8E6B] transition-all duration-1000 ease-out rounded-full"
+              className="h-full bg-[#6B8E6B] transition-all duration-1000 ease-out rounded-full relative"
               style={{ width: `${Math.min(100, progress.percentage)}%` }}
-            />
+            >
+              {/* Efek shimmer di dalam progress bar */}
+              <div className="absolute top-0 left-0 w-full h-full bg-white/20 animate-[pulse_2s_ease-in-out_infinite]"></div>
+            </div>
           </div>
 
-          {/* Dynamic Target Box */}
-          <div className="bg-[#FFF4F1] border border-[#FADCD5] rounded-xl p-3 flex items-center gap-3 mt-2">
-            <div className="bg-[#D97757] p-2 rounded-lg">
-              <Target className="w-5 h-5 text-white" />
+          {/* Smart Recommendation Container */}
+          {progress.remainingToday > 0 ? (
+            <div className="bg-[#FFF4F1] border border-[#FADCD5] rounded-xl p-4 flex flex-col gap-3 mt-2 relative overflow-hidden">
+              <div className="flex items-center gap-3 relative z-10">
+                <div className="bg-[#D97757] p-2 rounded-lg">
+                  <Target className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-[#D97757] uppercase tracking-wider">Sisa Target Hari Ini</p>
+                  <p className="text-sm font-medium text-[#A35941]"><span className="font-bold text-lg">{progress.remainingToday}</span> halaman</p>
+                </div>
+              </div>
+
+              {/* Pembagian Per Waktu Sholat */}
+              <div className="border-t border-[#FADCD5]/50 pt-3 flex items-center justify-between relative z-10">
+                <div className="flex items-center gap-1.5 text-[#A35941]">
+                  <Clock className="w-4 h-4" />
+                  <span className="text-xs font-semibold">Tersisa {prayerRecommendation.upcomingCount} Waktu Sholat</span>
+                </div>
+                <div className="bg-white/60 px-3 py-1 rounded-md text-xs font-bold text-[#D97757]">
+                  ± {prayerRecommendation.pagesPerPrayer} hal / sholat
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-bold text-[#D97757]">TARGET HARIANMU HARI INI</p>
-              <p className="text-sm font-medium text-[#A35941]"><span className="font-bold text-lg">{progress.dailyTarget}</span> halaman lagi agar on-track!</p>
+          ) : (
+            <div className="bg-[#EAF0EA] border border-[#c7dcc7] rounded-xl p-4 flex items-center justify-center text-center mt-2">
+              <div>
+                <p className="text-[#3E4F3E] font-bold">Alhamdulillah! 🎉</p>
+                <p className="text-sm text-[#6B8E6B] font-medium mt-1">Target harianmu sudah terpenuhi.</p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Mic Button & Waveform Area */}
-        <div className="relative z-10 flex flex-col items-center justify-center w-full min-h-[180px]">
+        <div className="relative z-10 flex flex-col items-center justify-center w-full min-h-[170px]">
           <button
             onClick={isRecording ? stopRecording : startRecording}
             disabled={isLoading}
             className={`
               relative flex items-center justify-center w-24 h-24 rounded-full transition-all duration-300 shadow-xl border-[6px] border-white
               ${isRecording
-                ? "bg-[#D97757] hover:bg-[#c26446] scale-95" // Terracotta saat rekam
-                : "bg-[#6B8E6B] hover:bg-[#5a7a5a] hover:scale-105"} // Matcha saat diam
+                ? "bg-[#D97757] hover:bg-[#c26446] scale-95"
+                : "bg-[#6B8E6B] hover:bg-[#5a7a5a] hover:scale-105"}
               ${isLoading ? "opacity-50 cursor-not-allowed" : ""}
             `}
           >
@@ -258,7 +395,6 @@ export default function Home() {
             )}
           </button>
 
-          {/* Bar Waveform */}
           <div className={`mt-6 flex items-end justify-center gap-[4px] h-10 transition-opacity duration-300 ${isRecording ? "opacity-100" : "opacity-0 hidden"}`}>
             {volumes.map((vol, idx) => (
               <div
@@ -269,7 +405,6 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Status & Timer */}
           <div className="mt-4 h-6 flex items-center justify-center">
             {isRecording ? (
               <div className="flex items-center space-x-2 text-[#D97757] font-bold">
