@@ -65,3 +65,26 @@ export function calculatePagesRead(startSurah: number, startAyah: number, endSur
     // Dibulatkan ke 2 angka desimal (misal: 2.50 halaman)
     return Math.round(totalPages * 100) / 100;
 }
+
+// Fungsi untuk mengubah Surah & Ayat jadi nomor absolut (1 - 6236)
+export function getAbsoluteAyah(surah: number, ayah: number): number {
+    let absolute = 0;
+    for (let i = 1; i < surah; i++) {
+        if (quranMetadata[i]) {
+            absolute += quranMetadata[i].totalAyahs;
+        }
+    }
+    return absolute + ayah;
+}
+
+// Fungsi untuk mengubah nomor absolut kembali jadi Surah & Ayat (Untuk Gap Detection)
+export function getSurahAyahFromAbsolute(abs: number): { surah: number; ayah: number; name: string } {
+    let current = 0;
+    for (let i = 1; i <= 114; i++) {
+        if (current + quranMetadata[i].totalAyahs >= abs) {
+            return { surah: i, ayah: abs - current, name: quranMetadata[i].name };
+        }
+        current += quranMetadata[i].totalAyahs;
+    }
+    return { surah: 114, ayah: 6, name: "An-Nas" };
+}
