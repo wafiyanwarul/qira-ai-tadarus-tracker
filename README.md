@@ -1,81 +1,93 @@
-# 🌙 Qira.ai - Smart Tadarus Tracker (v1.0.0)
+# 🌙 Qira.ai - Smart Tadarus Tracker (v2.0.0)
 
-![Next.js](https://img.shields.io/badge/Next.js-black?style=for-the-badge&logo=next.js&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
-![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-3982CE?style=for-the-badge&logo=Prisma&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
-![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
+![Groq](https://img.shields.io/badge/Groq_Llama_3-F55036?style=for-the-badge&logo=groq&logoColor=white)
+![Redis](https://img.shields.io/badge/Upstash_Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)
 
-**Qira.ai** is a smart, voice-activated Tadarus (Quran reading) tracker. Designed to help Muslims maintain their daily Quran reading targets, especially during Ramadan, with a seamless and organic user experience.
+Qira.ai is a highly intelligent, voice-activated Tadarus (Quran reading) tracker. Designed to help Muslims maintain their daily Quran reading targets during Ramadan and beyond, featuring seamless AI extraction, secure Google authentication, and real-time caching.
 
-🌐 **Live Demo:** [qira-ai-tadarus-tracker.vercel.app](https://qira-ai-tadarus-tracker.vercel.app) *(Replace with your actual Vercel link)*
+🌐 **Live Demo:** [https://qira-ai-tadarus-tracker.vercel.app](https://qira-ai-tadarus-tracker.vercel.app)
+
+---
+
+## ✨ Features (v2.0.0)
+- 🎙️ **Voice-to-JSON AI Extraction:** Simply say "Saya baca Al-Baqarah ayat 1 sampai 5", and the app uses Groq Whisper & Llama-3.3-70B to instantly parse it.
+- 🔐 **Secure Authentication:** Seamless Google Login powered by NextAuth.js.
+- ⚡ **Rate Limiting (Energy System):** Built-in Upstash Redis limiter to grant users 10 submissions per day, preventing API abuse.
+- 📖 **Instant Arabic Text Fetching:** Displays the original Arabic text & translation of your last read Ayah, cached in Redis for 0ms loading time.
+- 🛡️ **Overlap & Gap Detection:** Mathematically prevents you from logging the same Ayah twice in a day, and warns you if you accidentally skipped any Ayahs.
+- 🎯 **Dynamic Daily Targets:** Automatically calculates how many pages you need to read per prayer (Sholat) based on your realtime geolocation and daily Khatam target.
 
 ---
 
-## 📖 About The Project
-
-Instead of manually logging chapters (Juz) or verses (Ayah) through tedious forms, users can simply speak their progress naturally (e.g., *"Alhamdulillah, hari ini baca dari Surah Al-Baqarah ayat 200 sampai Ali Imran ayat 50"*). 
-
-Qira.ai uses **AI Speech-to-Text (Groq Whisper)** and **LLM Data Extraction (Gemini 2.5 Flash)** to automatically extract the Surah and Ayah, calculate the exact pages read based on the Madinah Mushaf standard (604 pages), and dynamically adjust future reading targets to keep users on track for their Khatam goals.
-
-## ✨ Key Features
-
-- 🎙️ **Natural Voice Logging:** Log your tadarus progress using voice notes. No typing required.
-- 🧠 **AI-Powered Extraction:** Understands unstructured natural speech and converts it into precise JSON data (Start Surah/Ayah to End Surah/Ayah).
-- 📍 **Smart Prayer Routing (Geolocation):** Automatically detects user location to fetch real-time prayer timings via Aladhan API, breaking down the remaining daily target into bite-sized pages per upcoming prayer.
-- 🛡️ **Quranic Gatekeeper Validation:** Cross-checks voice input against standard Quran metadata to prevent hallucinated verses.
-- 🎨 **Sahara & Matcha Aesthetic UI:** A grounding, earthy, and humanist user interface designed specifically for a spiritual app, complete with glassmorphism effects.
-- 🎉 **Emotional Rewards:** Features audio success chimes and canvas-confetti celebrations when daily targets are met.
-
-## 🛠️ Tech Stack
-
-- **Frontend:** Next.js 14 (App Router), React, Tailwind CSS, Lucide Icons, SweetAlert2
-- **Backend/API:** Next.js Route Handlers
-- **AI Models:** Groq SDK (Whisper-large-v3) & Google Gemini SDK (Gemini-2.5-flash)
-- **Database:** PostgreSQL hosted on Supabase (Connection Pooling)
-- **ORM:** Prisma Client with `@prisma/adapter-pg`
-- **Deployment:** Vercel
-
-## 🚀 Getting Started (Local Development)
-
-To run this project locally, follow these steps:
-
-1. **Clone the repository:**
-   ```bash
-   git clone [https://github.com/wafiyanwarul/qira-ai-tadarus-tracker.git](https://github.com/wafiyanwarul/qira-ai-tadarus-tracker.git)
-   cd qira-ai-tadarus-tracker
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Set up Environment Variables:**
-   Create a `.env.local` and `.env` file in the root directory and add your keys:
-   ```env
-   DATABASE_URL="postgresql://postgres.[YOUR_SUPABASE_ID]:[PASSWORD]@[aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres](https://aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres)"
-   DIRECT_URL="postgresql://postgres.[YOUR_SUPABASE_ID]:[PASSWORD]@[aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres](https://aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres)"
-   GROQ_API_KEY="your_groq_api_key"
-   GEMINI_API_KEY="your_gemini_api_key"
-   ```
-
-4. **Run Prisma Migrations:**
-   ```bash
-   npx prisma db push
-   npx prisma generate
-   ```
-
-5. **Start the development server:**
-   ```bash
-   npm run dev
-   ```
-
-## 🗺️ Future Roadmap (v2.0)
-- [ ] **Authentication:** Google OAuth integration for personalized user accounts.
-- [ ] **Official Quran API Integration:** Fetching real-time Arabic text and translations.
-- [ ] **Rate Limiting:** Upstash Redis implementation to manage AI API calls per user.
+## 🏗️ Architecture
+- **Frontend:** Next.js 14 (App Router), React, Tailwind CSS.
+- **Backend:** Next.js Serverless API Routes.
+- **Database:** PostgreSQL (hosted on Supabase), managed via Prisma ORM.
+- **Caching & Rate Limiting:** Upstash Redis (Serverless In-Memory Database).
+- **AI Models:** Groq `whisper-large-v3` (Audio) & `llama-3.3-70b-versatile` (JSON Extraction).
 
 ---
-*Crafted with 🤍 by **Wafiy Anwarul Hikam**.*
+
+## 🚀 Getting Started
+
+### 1. Clone the repository
+```bash
+git clone https://github.com/wafiyanwarul/qira-ai-tadarus-tracker.git
+cd qira-ai-tadarus-tracker
+```
+
+### 2. Install dependencies
+```bash
+npm install
+```
+
+### 3. Setup Environment Variables
+Create a `.env.local` file in the root directory and add the following keys. You will need to provision accounts on Supabase, Groq, Google Cloud Console, and Upstash.
+
+# Database (Supabase / Prisma)
+```bash
+DATABASE_URL="postgresql://postgres.[YOUR_PROJECT]:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgresql://postgres.[YOUR_PROJECT]:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres"
+```
+
+# AI Inference (Groq)
+```bash
+GROQ_API_KEY="gsk_..."
+```
+
+# Authentication (Google OAuth via GCP)
+```
+GOOGLE_CLIENT_ID="your_google_client_id.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="your_google_client_secret"
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="your_super_secret_key"
+```
+
+# Caching & Rate Limiting (Upstash Redis)
+```bash
+UPSTASH_REDIS_REST_URL="https://your-upstash-url.upstash.io"
+UPSTASH_REDIS_REST_TOKEN="your_upstash_token"
+```
+
+### 4. Setup Database Schema
+Push the Prisma schema to your Supabase PostgreSQL instance:
+```bash
+npx prisma db push
+npx prisma generate
+```
+
+### 5. Run the Development Server
+```bash
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+---
+
+## 👨‍💻 Developed By
+Crafted with 🤍 by **Wafiy Anwarul Hikam** (Illusphere Creative).
