@@ -146,8 +146,11 @@ export async function POST(req: Request) {
 
         if (lastLog) {
             const lastEndAbs = getAbsoluteAyah(lastLog.endSurah, lastLog.endAyah);
-            // Kalau dia baca ayat yang melompat jauh ke depan (ada selisih lebih dari 1 ayat)
-            if (newStartAbs > lastEndAbs + 1) {
+
+            // Cek apakah ini "Looping" (Dari akhir Quran kembali ke awal)
+            const isLooping = lastEndAbs > 6200 && newStartAbs < 100;
+
+            if (newStartAbs > lastEndAbs + 1 && !isLooping) {
                 const gapStart = getSurahAyahFromAbsolute(lastEndAbs + 1);
                 const gapEnd = getSurahAyahFromAbsolute(newStartAbs - 1);
 
@@ -182,11 +185,10 @@ export async function POST(req: Request) {
             }
         });
 
-        // --- NEW: DETEKSI KHATAM ---
-        // Jika bacaan berakhir di Surah 114 (An-Nas), berarti dia khatam 1 putaran!
-        const isKhatam = extractedData.end_surah === 114;
+        // --- NEW: DETEKSI KHATAM YANG ABSOLUT (ANTI GAGAL) ---
+        // Kita pakai savedRecord.endSurah karena ini 100% data valid yang masuk DB
+        const isKhatam = savedRecord.endSurah === 114;
 
-        // POTONG ENERGI USER (Set expired 24 jam biar db redis otomatis bersih)
         await redis.incr(redisKey);
         await redis.expire(redisKey, 86400);
 
@@ -195,7 +197,7 @@ export async function POST(req: Request) {
             text: rawText,
             data: savedRecord,
             gapWarning,
-            isKhatam
+            isKhatam // Bendera Checkpoint
         });
 
     } catch (error) {
