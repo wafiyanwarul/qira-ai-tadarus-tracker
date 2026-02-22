@@ -49,10 +49,27 @@ export async function GET(req: NextRequest) {
             };
         }));
 
+        // --- MENGHITUNG TOTAL ---
         const totalPagesRead = logs.reduce((sum, log) => sum + log.totalPagesRead, 0);
         const pagesReadToday = todayLogsRaw.reduce((sum, log) => sum + log.totalPagesRead, 0);
         const totalPagesTarget = targetKhatam * 604;
-        const baseDailyTarget = totalPagesTarget / 30;
+
+        // --- KALKULASI DINAMIS RAMADHAN ---
+        const ramadanStart = new Date('2026-02-19T00:00:00+07:00');
+        const now = new Date();
+
+        // Menghitung selisih hari dengan akurat
+        const diffTime = now.getTime() - ramadanStart.getTime();
+        const passedDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+        const remainingDays = Math.max(1, 30 - passedDays);
+
+        // --- LOGIKA TARGET PINTAR ---
+        const totalRemainingPages = Math.max(0, totalPagesTarget - totalPagesRead);
+
+        // Target harian menyesuaikan sisa halaman dibagi sisa hari
+        // Jadi kalau dia "ngebut" di awal, hari berikutnya targetnya makin santai!
+        const baseDailyTarget = totalRemainingPages === 0 ? 0 : (totalRemainingPages / remainingDays);
+
         const remainingToday = Math.max(0, baseDailyTarget - pagesReadToday);
         const percentage = Math.min(100, (totalPagesRead / totalPagesTarget) * 100);
 
@@ -71,9 +88,10 @@ export async function GET(req: NextRequest) {
                 remainingToday: Math.round(remainingToday * 10) / 10,
                 dailyTarget: Math.round(baseDailyTarget * 10) / 10,
                 percentage: Math.round(percentage * 10) / 10,
+                remainingDays, // <--- Kirim sisa hari ke Frontend
                 todayLogs,
                 energy: { used: usedEnergy, max: 10 },
-                lastRead: lastLog // <--- DATA BARU UNTUK FRONTEND
+                lastRead: lastLog
             }
         });
     } catch (error) {

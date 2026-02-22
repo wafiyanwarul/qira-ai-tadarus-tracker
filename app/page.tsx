@@ -30,7 +30,8 @@ export default function Home() {
 
   const [progress, setProgress] = useState({
     totalPagesRead: 0, totalPagesTarget: 604, pagesReadToday: 0,
-    remainingToday: 20.1, dailyTarget: 20.1, percentage: 0, todayLogs: [] as any[], lastRead: null as any
+    remainingToday: 20.1, dailyTarget: 20.1, percentage: 0, todayLogs: [] as any[], lastRead: null as any,
+    remainingDays: 30,
   });
 
   const [prayerRecommendation, setPrayerRecommendation] = useState({ upcomingCount: 0, pagesPerPrayer: 0, nextPrayerName: "Subuh" });
@@ -220,32 +221,54 @@ export default function Home() {
 
             const isTargetMet = (progress.pagesReadToday + data.data.totalPagesRead) >= progress.dailyTarget;
 
-            // Audio Alhamdulillah kembali menyala jika target beres
-            if (isTargetMet) {
-              confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            // SKENARIO 1: USER BARU SAJA KHATAM (BACA AN-NAS)
+            if (data.isKhatam) {
+              confetti({ particleCount: 300, spread: 120, origin: { y: 0.4 } }); // Confetti lebih meriah!
               try { new Audio('/alhamdulillah.mp3').play(); } catch (e) { }
-            }
 
-            // HTML Warning Ayat Terlewat
-            const gapHtml = data.gapWarning
-              ? `<div class="mt-4 bg-[#FFF0E5] p-3 rounded-xl border border-[#FADCD5] text-xs text-[#D97757] font-semibold flex items-start gap-2 shadow-sm text-left"><span class="text-base">💡</span><p>${data.gapWarning}</p></div>`
-              : '';
-
-            Swal.fire({
-              title: isTargetMet ? "Alhamdulillah! 🎉" : "Masya Allah!",
-              html: `
-                <div class="text-left space-y-2 mt-2">
-                  <div class="bg-[#EAF0EA] p-4 rounded-2xl border border-[#c7dcc7] shadow-sm">
-                    <p class="text-sm font-semibold text-[#3E4F3E]">Surah ${data.data.startSurah}:${data.data.startAyah} - Surah ${data.data.endSurah}:${data.data.endAyah}</p>
-                    <p class="text-2xl font-black text-[#6B8E6B] mt-1">+${data.data.totalPagesRead} Halaman</p>
+              Swal.fire({
+                title: "Masyallah, Khatam! 🌟",
+                html: `
+                  <div class="text-left space-y-4 mt-2">
+                    <p class="text-sm font-medium text-[#8C8273] text-center">Alhamdulillah, kamu telah menyelesaikan putaran 30 Juz!</p>
+                    <div class="bg-[#EAF0EA] p-5 rounded-2xl border border-[#c7dcc7] shadow-sm text-center">
+                      <p dir="rtl" class="text-3xl font-serif text-[#3E4F3E] leading-[2.2] mb-3">اللَّهُمَّ ارْحَمْنِي بِالْقُرْآنِ وَاجْعَلْهُ لِي إِمَامًا وَنُورًا وَهُدًى وَرَحْمَةً</p>
+                      <p class="text-[11px] text-[#6B8E6B] italic font-semibold leading-relaxed">"Ya Allah, rahmatilah aku dengan Al-Quran. Jadikanlah ia sebagai pemimpin, cahaya, petunjuk, dan rahmat bagiku."</p>
+                    </div>
                   </div>
-                  ${isTargetMet ? '<p class="text-[#D97757] font-bold text-center mt-3 tracking-wide">Target harianmu TUNTAS!</p>' : ''}
-                  ${gapHtml}
-                </div>
-              `,
-              icon: "success", confirmButtonColor: "#6B8E6B", background: '#FDFBF7',
-              customClass: { popup: '!rounded-3xl' } // Bikin border lengkung
-            });
+                `,
+                icon: "success", confirmButtonText: "Aamiin", confirmButtonColor: "#6B8E6B", background: '#FDFBF7',
+                customClass: { popup: '!rounded-3xl' }
+              });
+
+            }
+            // SKENARIO 2: SETORAN BIASA / TARGET HARIAN TERCAPAI
+            else {
+              if (isTargetMet) {
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                try { new Audio('/alhamdulillah.mp3').play(); } catch (e) { }
+              }
+
+              const gapHtml = data.gapWarning
+                ? `<div class="mt-4 bg-[#FFF0E5] p-3 rounded-xl border border-[#FADCD5] text-xs text-[#D97757] font-semibold flex items-start gap-2 shadow-sm text-left"><span class="text-base">💡</span><p>${data.gapWarning}</p></div>`
+                : '';
+
+              Swal.fire({
+                title: isTargetMet ? "Alhamdulillah! 🎉" : "Masya Allah!",
+                html: `
+                  <div class="text-left space-y-2 mt-2">
+                    <div class="bg-[#EAF0EA] p-4 rounded-2xl border border-[#c7dcc7] shadow-sm">
+                      <p class="text-sm font-semibold text-[#3E4F3E]">Surah ${data.data.startSurah}:${data.data.startAyah} - Surah ${data.data.endSurah}:${data.data.endAyah}</p>
+                      <p class="text-2xl font-black text-[#6B8E6B] mt-1">+${data.data.totalPagesRead} Halaman</p>
+                    </div>
+                    ${isTargetMet ? '<p class="text-[#D97757] font-bold text-center mt-3 tracking-wide">Target harianmu TUNTAS!</p>' : ''}
+                    ${gapHtml}
+                  </div>
+                `,
+                icon: "success", confirmButtonColor: "#6B8E6B", background: '#FDFBF7',
+                customClass: { popup: '!rounded-3xl' }
+              });
+            }
           } else {
             if (res.status === 429) {
               playSound(150, "sawtooth", 0.3);
@@ -392,6 +415,9 @@ export default function Home() {
                   <div className="flex items-center gap-1.5 text-[#A35941]">
                     <Clock className="w-4 h-4" />
                     <span className="text-xs font-semibold">Tersisa {prayerRecommendation.upcomingCount} Sholat</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-[10px] text-[#D97757]/80 font-semibold mt-1">
+                    <Clock className="w-3 h-3" /><span>Sisa Waktu Ramadhan: {progress.remainingDays} Hari</span>
                   </div>
                   <div className="bg-white px-2.5 py-1 rounded-lg text-xs font-bold text-[#D97757] shadow-sm border border-[#FADCD5]">± {prayerRecommendation.pagesPerPrayer} hal / sholat</div>
                 </div>

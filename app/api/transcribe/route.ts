@@ -182,6 +182,10 @@ export async function POST(req: Request) {
             }
         });
 
+        // --- NEW: DETEKSI KHATAM ---
+        // Jika bacaan berakhir di Surah 114 (An-Nas), berarti dia khatam 1 putaran!
+        const isKhatam = extractedData.end_surah === 114;
+
         // POTONG ENERGI USER (Set expired 24 jam biar db redis otomatis bersih)
         await redis.incr(redisKey);
         await redis.expire(redisKey, 86400);
@@ -191,6 +195,7 @@ export async function POST(req: Request) {
             text: rawText,
             data: savedRecord,
             gapWarning,
+            isKhatam
         });
 
     } catch (error) {

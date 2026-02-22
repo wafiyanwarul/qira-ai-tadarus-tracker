@@ -15,6 +15,12 @@ export const authOptions: NextAuthOptions = {
     ],
     secret: env.NEXTAUTH_SECRET,
     session: { strategy: "database" },
+
+    pages: {
+        signIn: '/', // Kalau belum login, arahkan ke beranda
+        error: '/',  // Kalau ada error sesi (laptop sleep dll), paksa balik ke beranda
+    },
+
     callbacks: {
         async session({ session, user }) {
             if (session.user) {
