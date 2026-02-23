@@ -1,13 +1,12 @@
 // app/api/transcribe/route.ts
 import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
-import { validateTadarusInput, calculatePagesRead, getAbsoluteAyah, getSurahAyahFromAbsolute } from '@/lib/quranData';
+import { validateTadarusInput, calculatePagesRead, getAbsoluteAyah, getSurahAyahFromAbsolute, quranMetadata } from '@/lib/quranData';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/src/config/env';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { Redis } from '@upstash/redis';
-
 
 // KITA CUMA PAKAI GROQ SEKARANG! (Gemini dihapus)
 const groq = new Groq({ apiKey: env.GROQ_API_KEY });
@@ -29,7 +28,7 @@ export async function POST(req: Request) {
             return NextResponse.json({
                 success: false,
                 error: 'Energi AI kamu hari ini habis (0/10 ⚡). Istirahat dulu ya, lanjut lapor tadarus besok!'
-            }, { status: 429 }); // Status 429 = Too Many Requests
+            }, { status: 429 });
         }
 
         const formData = await req.formData();
@@ -49,7 +48,7 @@ export async function POST(req: Request) {
         });
         const rawText = transcription.text;
 
-        // 2. GROQ LLAMA-3: Text to JSON (Nggak pake Gemini lagi!)
+        // 2. GROQ LLAMA-3: Text to JSON
         const chatCompletion = await groq.chat.completions.create({
             messages: [
                 {
@@ -78,10 +77,8 @@ export async function POST(req: Request) {
                     content: rawText
                 }
             ],
-            // Kita pakai model Llama-3 8B yang super cepat dan gratis
             model: 'llama-3.3-70b-versatile',
             temperature: 0,
-            // Paksa Groq untuk mengeluarkan format JSON
             response_format: { type: "json_object" }
         });
 
@@ -105,26 +102,35 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: false, error: validation.message });
         }
 
-        // --- LOGIC PENCEGAH AYAT GANDA ---
         const newStartAbs = getAbsoluteAyah(extractedData.start_surah, extractedData.start_ayah);
         const newEndAbs = getAbsoluteAyah(extractedData.end_surah, extractedData.end_ayah);
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        // ====================================================================
+        // --- MULTI-KHATAM ISOLATION LOGIC (THE ULTIMATE ENGINE) ---
+        // ====================================================================
 
-        const todayLogs = await prisma.progressLog.findMany({
-            where: {
-                userId: session.user.id,
-                createdAt: { gte: today }
-            }
+        // 1. Cari kapan terakhir kali dia Khatam (Membaca Surah 114 An-Nas)
+        const lastKhatamLog = await prisma.progressLog.findFirst({
+            where: { userId: session.user.id, endSurah: 114 },
+            orderBy: { createdAt: 'desc' }
         });
 
-        let isOverlap = false;
-        for (const log of todayLogs) {
-            const logStart = getAbsoluteAyah(log.startSurah, log.startAyah);
-            const logEnd = getAbsoluteAyah(log.endSurah, log.endAyah);
+        // 2. Ambil semua log HANYA pada putaran target yang sedang berjalan
+        const currentIterationLogs = await prisma.progressLog.findMany({
+            where: {
+                userId: session.user.id,
+                ...(lastKhatamLog ? { createdAt: { gt: lastKhatamLog.createdAt } } : {})
+            },
+            orderBy: { createdAt: 'desc' }
+        });
 
-            if (Math.max(newStartAbs, logStart) <= Math.min(newEndAbs, logEnd)) {
+        // 3. CEK OVERLAP (Ayat Bertumpuk) KHUSUS DI PUTARAN INI SAJA
+        let isOverlap = false;
+        for (const log of currentIterationLogs) {
+            const logStartAbs = getAbsoluteAyah(log.startSurah, log.startAyah);
+            const logEndAbs = getAbsoluteAyah(log.endSurah, log.endAyah);
+
+            if (Math.max(newStartAbs, logStartAbs) <= Math.min(newEndAbs, logEndAbs)) {
                 isOverlap = true;
                 break;
             }
@@ -133,24 +139,28 @@ export async function POST(req: Request) {
         if (isOverlap) {
             return NextResponse.json({
                 success: false,
-                error: 'Sebagian/seluruh ayat ini sudah kamu setor hari ini. Lanjut ke ayat berikutnya ya!'
-            });
+                error: `Tunggu dulu... Ayat ini sudah pernah kamu setor pada putaran Khatam ini. Lanjut ke ayat berikutnya ya!`
+            }, { status: 400 });
         }
 
-        // --- GAP DETECTION (AYAT TERLEWAT) ---
+        // 4. CEK GAP (AYAT TERLEWAT) & ANTI-MUNDUR
         let gapWarning = null;
-        const lastLog = await prisma.progressLog.findFirst({
-            where: { userId: session.user.id },
-            orderBy: { createdAt: 'desc' }
-        });
+        const lastLog = currentIterationLogs.length > 0 ? currentIterationLogs[0] : null;
 
         if (lastLog) {
             const lastEndAbs = getAbsoluteAyah(lastLog.endSurah, lastLog.endAyah);
 
-            // Cek apakah ini "Looping" (Dari akhir Quran kembali ke awal)
-            const isLooping = lastEndAbs > 6200 && newStartAbs < 100;
+            // Anti-Mundur
+            if (newStartAbs <= lastEndAbs) {
+                const lastSurahName = quranMetadata[lastLog.endSurah]?.name || `Surah ${lastLog.endSurah}`;
+                return NextResponse.json({
+                    success: false,
+                    error: `Kamu sudah sampai ${lastSurahName} ayat ${lastLog.endAyah}. Tidak perlu mundur lagi!`
+                }, { status: 400 });
+            }
 
-            if (newStartAbs > lastEndAbs + 1 && !isLooping) {
+            // Gap Detection (Ayat terlewat)
+            if (newStartAbs > lastEndAbs + 1) {
                 const gapStart = getSurahAyahFromAbsolute(lastEndAbs + 1);
                 const gapEnd = getSurahAyahFromAbsolute(newStartAbs - 1);
 
@@ -164,7 +174,17 @@ export async function POST(req: Request) {
                 }
                 gapWarning = `Kamu melompati <b>${gapText}</b>. Jangan lupa dituntaskan ya!`;
             }
+        } else {
+            // Jika ini adalah setoran PERTAMA di putaran Khatam baru (misal Khatam ke-2)
+            if (newStartAbs > 1) {
+                const gapEnd = getSurahAyahFromAbsolute(newStartAbs - 1);
+                let gapText = gapEnd.surah === 1 && gapEnd.ayah === 1
+                    ? `Al-Fatihah ayat 1`
+                    : `Al-Fatihah ayat 1 s/d ${gapEnd.name} ayat ${gapEnd.ayah}`;
+                gapWarning = `Putaran baru! Kamu melompati <b>${gapText}</b>.`;
+            }
         }
+        // ====================================================================
 
         // 4. CALCULATE ESTIMATED PAGES
         const totalPages = calculatePagesRead(
@@ -185,9 +205,12 @@ export async function POST(req: Request) {
             }
         });
 
-        // --- NEW: DETEKSI KHATAM YANG ABSOLUT (ANTI GAGAL) ---
-        // Kita pakai savedRecord.endSurah karena ini 100% data valid yang masuk DB
-        const isKhatam = savedRecord.endSurah === 114;
+        // --- NEW: SYARAT KHATAM KETAT (ANTI-CHEAT) MULTI-KHATAM ---
+        // Hitung total halaman yang dibaca HANYA di putaran ini, ditambah setoran barusan
+        const currentIterationTotalPages = currentIterationLogs.reduce((sum, log) => sum + log.totalPagesRead, 0) + savedRecord.totalPagesRead;
+
+        // Dianggap Khatam HANYA JIKA dia menyentuh An-Nas DAN halamannya masuk akal untuk 1 putaran (~590 halaman min)
+        const isKhatam = savedRecord.endSurah === 114 && currentIterationTotalPages >= 590;
 
         await redis.incr(redisKey);
         await redis.expire(redisKey, 86400);

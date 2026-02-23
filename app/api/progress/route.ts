@@ -50,28 +50,48 @@ export async function GET(req: NextRequest) {
         }));
 
         // --- MENGHITUNG TOTAL ---
-        const totalPagesRead = logs.reduce((sum, log) => sum + log.totalPagesRead, 0);
+        // Ubah const menjadi let agar bisa kita modifikasi angkanya
+        let totalPagesRead = logs.reduce((sum, log) => sum + log.totalPagesRead, 0);
         const pagesReadToday = todayLogsRaw.reduce((sum, log) => sum + log.totalPagesRead, 0);
         const totalPagesTarget = targetKhatam * 604;
+
+        // --- NEW: PLAFON HALAMAN (ANTI PREMATURE LOCK) ---
+        // Menghitung berapa kali user benar-benar sudah menyetor Surah 114 (An-Nas)
+        const actualKhatamCount = logs.filter(log => log.endSurah === 114).length;
+
+        // Jika halaman "kebablasan" nembus target karena akumulasi desimal, 
+        // TAPI user belum beneran nyentuh An-Nas untuk putaran target ini...
+        if (actualKhatamCount < targetKhatam && totalPagesRead >= totalPagesTarget) {
+            // Tahan total halamannya sedikit di bawah target (diskon 0.5 halaman)
+            // Supaya UI mentok di 99.9% dan tombol Mic TIDAK DIGEMBOK!
+            totalPagesRead = totalPagesTarget - 0.5;
+        }
+        // --------------------------------------------------
 
         // --- KALKULASI DINAMIS RAMADHAN ---
         const ramadanStart = new Date('2026-02-19T00:00:00+07:00');
         const now = new Date();
 
-        // Menghitung selisih hari dengan akurat
+        // Menghitung selisih waktu
         const diffTime = now.getTime() - ramadanStart.getTime();
+        // Math.floor membulatkan ke bawah. Tanggal 23 - 19 = 4 hari penuh yang udah lewat.
         const passedDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
-        const remainingDays = Math.max(1, 30 - passedDays);
+
+        const puasaHariKe = passedDays + 1; // Sekarang berarti Hari ke-5!
+        const remainingDays = Math.max(1, 30 - puasaHariKe); // 30 - 5 = 25 Hari Sisa
 
         // --- LOGIKA TARGET PINTAR ---
         const totalRemainingPages = Math.max(0, totalPagesTarget - totalPagesRead);
-
-        // Target harian menyesuaikan sisa halaman dibagi sisa hari
-        // Jadi kalau dia "ngebut" di awal, hari berikutnya targetnya makin santai!
         const baseDailyTarget = totalRemainingPages === 0 ? 0 : (totalRemainingPages / remainingDays);
-
         const remainingToday = Math.max(0, baseDailyTarget - pagesReadToday);
-        const percentage = Math.min(100, (totalPagesRead / totalPagesTarget) * 100);
+
+        let percentage = (totalPagesRead / totalPagesTarget) * 100;
+        // Kunci di 99.99% jika belum menyentuh An-Nas
+        if (actualKhatamCount < targetKhatam && percentage >= 99.99) {
+            percentage = 99.99;
+        } else {
+            percentage = Math.min(100, percentage);
+        }
 
         // Ambil data paling atas (paling baru)
         const lastLog = logs.length > 0 ? {
@@ -87,9 +107,12 @@ export async function GET(req: NextRequest) {
                 pagesReadToday: Math.round(pagesReadToday * 10) / 10,
                 remainingToday: Math.round(remainingToday * 10) / 10,
                 dailyTarget: Math.round(baseDailyTarget * 10) / 10,
-                percentage: Math.round(percentage * 10) / 10,
-                remainingDays, // <--- Kirim sisa hari ke Frontend
+                // --- UBAH DI SINI: Dari 10 menjadi 100 untuk 2 angka desimal ---
+                percentage: Math.round(percentage * 100) / 100,
+                remainingDays,
+                puasaHariKe,
                 todayLogs,
+                actualKhatamCount,
                 energy: { used: usedEnergy, max: 10 },
                 lastRead: lastLog
             }

@@ -2,9 +2,11 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Mic, Square, Loader2, Target, Clock, Github, ChevronDown, MapPin, ListChecks, Zap, History } from "lucide-react";
+import MarqueeBanner from "@/components/MarqueeBanner";
 import Swal from 'sweetalert2';
 import confetti from 'canvas-confetti';
 import { useSession, signIn, signOut } from "next-auth/react";
+import { getKhatamPrayerHtml } from "@/lib/templates/templates";
 
 const QiraLogo = () => (
   <svg viewBox="0 0 24 24" fill="none" className="w-7 h-7">
@@ -31,7 +33,7 @@ export default function Home() {
   const [progress, setProgress] = useState({
     totalPagesRead: 0, totalPagesTarget: 604, pagesReadToday: 0,
     remainingToday: 20.1, dailyTarget: 20.1, percentage: 0, todayLogs: [] as any[], lastRead: null as any,
-    remainingDays: 30,
+    remainingDays: 30, puasaHariKe: 1
   });
 
   const [prayerRecommendation, setPrayerRecommendation] = useState({ upcomingCount: 0, pagesPerPrayer: 0, nextPrayerName: "Subuh" });
@@ -86,12 +88,19 @@ export default function Home() {
       navigator.geolocation.getCurrentPosition(async (position) => {
         const { latitude: lat, longitude: lng } = position.coords;
         try {
+          // 1. Ambil Jadwal Sholat
           const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=11`);
           const data = await res.json();
           setPrayerTimings(data.data.timings);
-          setLocationName(data.data.meta.timezone.split('/')[1].replace('_', ' '));
+
+          // 2. NEW: Ambil Nama Kota & Negara akurat
+          const locRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=id`);
+          const locData = await locRes.json();
+          // Prioritaskan nama kota/kabupaten lokal, baru provinsi kalau kotanya kosong
+          const exactCity = locData.city || locData.locality || locData.principalSubdivision;
+          setLocationName(`${exactCity}, ${locData.countryName}`);
         } catch (err) { setLocationName("Lokasi tak diketahui"); }
-      }, () => setLocationName("Akses Ditolak"));
+      }, () => setLocationName("Akses Lokasi Ditolak"));
     }
   };
 
@@ -180,6 +189,17 @@ export default function Home() {
   };
 
   const startRecording = async () => {
+    // --- NEW: GEMBOK TARGET TUNTAS ---
+    if (progress.totalPagesRead >= progress.totalPagesTarget) {
+      Swal.fire({
+        title: "Masya Allah! 🏆",
+        text: `Kamu sudah menuntaskan target ${targetKhatam}x Khatam. Tingkatkan target di menu atas untuk lanjut ngaji!`,
+        icon: "info",
+        confirmButtonColor: "#D97757",
+        customClass: { popup: '!rounded-3xl' }
+      });
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
@@ -223,22 +243,18 @@ export default function Home() {
 
             // SKENARIO 1: USER BARU SAJA KHATAM (BACA AN-NAS)
             if (data.isKhatam) {
-              confetti({ particleCount: 300, spread: 120, origin: { y: 0.4 } }); // Confetti lebih meriah!
+              confetti({ particleCount: 300, spread: 120, origin: { y: 0.4 } });
               try { new Audio('/alhamdulillah.mp3').play(); } catch (e) { }
 
               Swal.fire({
                 title: "Masyallah, Khatam! 🌟",
-                html: `
-                  <div class="text-left space-y-4 mt-2">
-                    <p class="text-sm font-medium text-[#8C8273] text-center">Alhamdulillah, kamu telah menyelesaikan putaran 30 Juz!</p>
-                    <div class="bg-[#EAF0EA] p-5 rounded-2xl border border-[#c7dcc7] shadow-sm text-center">
-                      <p dir="rtl" class="text-3xl font-serif text-[#3E4F3E] leading-[2.2] mb-3">اللَّهُمَّ ارْحَمْنِي بِالْقُرْآنِ وَاجْعَلْهُ لِي إِمَامًا وَنُورًا وَهُدًى وَرَحْمَةً</p>
-                      <p class="text-[11px] text-[#6B8E6B] italic font-semibold leading-relaxed">"Ya Allah, rahmatilah aku dengan Al-Quran. Jadikanlah ia sebagai pemimpin, cahaya, petunjuk, dan rahmat bagiku."</p>
-                    </div>
-                  </div>
-                `,
-                icon: "success", confirmButtonText: "Aamiin", confirmButtonColor: "#6B8E6B", background: '#FDFBF7',
-                customClass: { popup: '!rounded-3xl' }
+                html: getKhatamPrayerHtml(targetKhatam), // <--- CUMA 1 BARIS INI SEKARANG! SANGAT CLEAN!
+                icon: "success",
+                confirmButtonText: "Aamiin Ya Rabbal 'Alamin",
+                confirmButtonColor: "#6B8E6B",
+                background: '#FDFBF7',
+                width: '95%',
+                customClass: { popup: '!rounded-[2.5rem]' }
               });
 
             }
@@ -329,7 +345,7 @@ export default function Home() {
       </div>
 
       {/* overflow-hidden dihapus dari sini */}
-      <div className="w-full max-w-md bg-white/95 backdrop-blur-md rounded-[2.5rem] shadow-xl border border-[#E5E0D8] p-8 flex flex-col items-center space-y-7 relative z-10 mt-6">
+      <div className="w-full max-w-md bg-white/95 backdrop-blur-md rounded-[2.5rem] shadow-xl border border-[#E5E0D8] px-8 pt-8 pb-14 flex flex-col items-center space-y-7 relative z-10 mt-6">
 
         {/* Dekorasi dibungkus kontainer khusus biar nggak meluber */}
         <div className="absolute inset-0 rounded-[2.5rem] overflow-hidden pointer-events-none -z-10">
@@ -338,35 +354,49 @@ export default function Home() {
         </div>
 
         <div className="relative z-50 w-full flex justify-between items-start">
-          <div className="space-y-2">
+          <div className="space-y-3">
             <h1 className="text-3xl font-extrabold text-[#3E4F3E] flex items-center gap-2">Qira.ai <QiraLogo /></h1>
 
-            {/* CUSTOM DROPDOWN UI */}
-            <div className="relative" ref={dropdownRef}>
-              <div
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-1.5 text-[#8C8273] text-sm font-medium bg-[#F9F8F6] px-3 py-1.5 rounded-xl border border-[#E5E0D8] cursor-pointer hover:bg-[#F3EFE8] transition-colors shadow-sm w-fit"
-              >
-                <span className="text-[11px] uppercase tracking-wider">Target Khatam:</span>
-                <span className="font-bold text-[#D97757] text-sm">{targetKhatam}x</span>
-                <ChevronDown className={`w-4 h-4 text-[#D97757] transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+            {/* BUNGKUSAN BARU: Flex-wrap agar kalau layarnya kecil, tombolnya turun dengan rapi */}
+            <div className="flex items-center gap-2.5 flex-wrap">
+
+              {/* CUSTOM DROPDOWN UI */}
+              <div className="relative" ref={dropdownRef}>
+                <div
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  className="flex items-center gap-1.5 text-[#8C8273] text-sm font-medium bg-[#F9F8F6] px-3 py-2 rounded-xl border border-[#E5E0D8] cursor-pointer hover:bg-[#F3EFE8] transition-colors shadow-sm w-fit h-[36px]"
+                >
+                  <span className="text-[11px] uppercase tracking-wider">Target:</span>
+                  <span className="font-bold text-[#D97757] text-sm">{targetKhatam}x</span>
+                  <ChevronDown className={`w-4 h-4 text-[#D97757] transition-transform duration-300 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                </div>
+
+                {/* MENU DROPDOWN (HANYA MUNCUL SEKALI DI SINI) */}
+                {isDropdownOpen && (
+                  <div className="absolute top-full left-0 mt-2 w-full min-w-[140px] bg-white border border-[#E5E0D8] rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                    {[1, 2, 3, 4, 5, 6].map(num => (
+                      <div
+                        key={num}
+                        onClick={() => { setTargetKhatam(num); setIsDropdownOpen(false); }}
+                        className={`px-4 py-3 text-sm text-center cursor-pointer border-b border-[#F9F8F6] last:border-0 transition-colors ${targetKhatam === num ? 'font-bold text-[#D97757] bg-[#FFF4F1]' : 'text-[#8C8273] font-medium hover:bg-[#F3EFE8] hover:text-[#4A4238]'}`}
+                      >
+                        {num}x Khatam
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {isDropdownOpen && (
-                <div className="absolute top-full left-0 mt-2 w-full min-w-[140px] bg-white border border-[#E5E0D8] rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                  {[1, 2, 3, 4, 5, 6].map(num => (
-                    <div
-                      key={num}
-                      onClick={() => { setTargetKhatam(num); setIsDropdownOpen(false); }}
-                      className={`px-4 py-3 text-sm text-center cursor-pointer border-b border-[#F9F8F6] last:border-0 transition-colors ${targetKhatam === num ? 'font-bold text-[#D97757] bg-[#FFF4F1]' : 'text-[#8C8273] font-medium hover:bg-[#F3EFE8] hover:text-[#4A4238]'}`}
-                    >
-                      {num}x Khatam
-                    </div>
-                  ))}
-                </div>
+              {/* TOMBOL DOA KHATAM YANG SUDAH KONSISTEN */}
+              {(progress as any).actualKhatamCount > 0 && (
+                <button
+                  onClick={() => Swal.fire({ title: "Masyallah, Khatam! 🌟", html: getKhatamPrayerHtml((progress as any).actualKhatamCount), icon: "success", confirmButtonText: "Aamiin Ya Rabbal 'Alamin", confirmButtonColor: "#6B8E6B", background: '#FDFBF7', width: '95%', customClass: { popup: '!rounded-[2.5rem]' } })}
+                  className="flex items-center gap-1.5 bg-gradient-to-r from-[#D97757] to-[#c26446] text-white px-3 py-2 rounded-xl text-[11px] font-bold shadow-md hover:shadow-lg hover:scale-105 transition-all cursor-pointer h-[36px]"
+                >
+                  <span>✨</span> Doa Khatam
+                </button>
               )}
             </div>
-
           </div>
 
           <div className="flex flex-col items-end gap-2">
@@ -386,7 +416,10 @@ export default function Home() {
             <div>
               <p className="text-[10px] font-black text-[#A39A8E] uppercase tracking-widest mb-1.5">Total Halaman</p>
               <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-black text-[#4A4238]">{progress.totalPagesRead}</span>
+                {/* Pakai Math.min biar kalau 619/604, yang tampil cuma 604/604 */}
+                <span className="text-4xl font-black text-[#4A4238]">
+                  {Math.min(progress.totalPagesRead, progress.totalPagesTarget)}
+                </span>
                 <span className="text-sm font-semibold text-[#8C8273]">/ {progress.totalPagesTarget}</span>
               </div>
             </div>
@@ -402,9 +435,12 @@ export default function Home() {
             </div>
           </div>
 
-          {/* SISA HARI RAMADHAN (Pindah ke luar biar selalu kelihatan) */}
-          <div className="flex items-center justify-between text-[11px] font-bold text-[#8C8273] px-1">
-            <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-[#D97757]" /> Sisa Ramadhan: {progress.remainingDays} Hari</div>
+          {/* SISA HARI RAMADHAN */}
+          <div className="flex items-center justify-between text-[11px] font-bold text-[#8C8273] px-1 mt-2">
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-[#D97757]" />
+              <span>Puasa Hari Ke-{progress.puasaHariKe} (Sisa {progress.remainingDays} Hari)</span>
+            </div>
             <div>Target: {targetKhatam}x Khatam</div>
           </div>
 
@@ -437,13 +473,21 @@ export default function Home() {
                       <p className="text-sm font-medium text-[#A35941]"><span className="font-bold text-lg">{progress.remainingToday}</span> halaman</p>
                     </div>
                   </div>
-                  <div className="border-t border-[#FADCD5]/60 pt-3 flex flex-col gap-2.5">
+                  <div className="border-t border-[#FADCD5]/60 pt-3 flex flex-col gap-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5 text-[#A35941]">
                         <Clock className="w-4 h-4" />
                         <span className="text-xs font-semibold">Tersisa {prayerRecommendation.upcomingCount} Sholat</span>
                       </div>
                       <div className="bg-white px-2.5 py-1 rounded-lg text-xs font-bold text-[#D97757] shadow-sm border border-[#FADCD5]">± {prayerRecommendation.pagesPerPrayer} hal / sholat</div>
+                    </div>
+
+                    {/* NEW: LOKASI SEBAGAI PIL ICON DI BAWAH SHOLAT */}
+                    <div className="w-full flex justify-start">
+                      <div className="flex items-center gap-1.5 bg-[#FFF0E5] px-3 py-1.5 rounded-full border border-[#FADCD5] shadow-sm text-[#A35941]">
+                        <MapPin className="w-3.5 h-3.5 text-[#D97757]" />
+                        <span className="text-[10px] font-bold tracking-wide">{locationName}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -483,6 +527,8 @@ export default function Home() {
             ) : isLoading ? <p className="text-sm font-semibold text-[#8C8273] animate-pulse">Memproses tadarus...</p> : null}
           </div>
         </div>
+
+        <MarqueeBanner />
       </div>
 
       <footer className="mt-8 relative z-10 flex flex-col items-center gap-3 bg-white/70 backdrop-blur-md px-8 py-5 rounded-3xl border border-[#E5E0D8] shadow-sm">
