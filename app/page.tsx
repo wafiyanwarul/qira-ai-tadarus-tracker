@@ -254,7 +254,11 @@ export default function Home() {
             // SKENARIO 1: USER BARU SAJA KHATAM (BACA AN-NAS)
             if (data.isKhatam) {
               confetti({ particleCount: 300, spread: 120, origin: { y: 0.4 } });
-              try { new Audio('/alhamdulillah.mp3').play(); } catch (e) { }
+              try {
+                const audio = new Audio('/alhamdulillah.mp3');
+                audio.volume = 0.4;
+                audio.play();
+              } catch (e) { }
 
               Swal.fire({
                 title: "Masyallah, Khatam! 🌟",
@@ -272,7 +276,11 @@ export default function Home() {
             else {
               if (isTargetMet) {
                 confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-                try { new Audio('/alhamdulillah.mp3').play(); } catch (e) { }
+                try {
+                  const audio = new Audio('/alhamdulillah.mp3');
+                  audio.volume = 0.4;
+                  audio.play();
+                } catch (e) { }
               }
 
               const gapHtml = data.gapWarning
