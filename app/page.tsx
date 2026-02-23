@@ -330,21 +330,19 @@ export default function Home() {
   }
 
   if (status === "unauthenticated") {
+
     const showTermsAndConditions = (e: React.MouseEvent) => {
       e.preventDefault();
-      const showTermsAndConditions = (e: React.MouseEvent) => {
-        e.preventDefault();
-        Swal.fire({
-          title: 'Syarat & Ketentuan Layanan',
-          html: termsAndConditionsHtml, // <--- JADI SEPENDEK INI DOANG SEKARANG!
-          icon: 'info',
-          confirmButtonText: 'Saya Mengerti',
-          confirmButtonColor: '#6B8E6B',
-          background: '#FDFBF7',
-          customClass: { popup: '!rounded-[2rem]' },
-          width: '90%'
-        });
-      };
+      Swal.fire({
+        title: 'Syarat & Ketentuan Layanan',
+        html: termsAndConditionsHtml, // <--- JADI SEPENDEK INI DOANG SEKARANG!
+        icon: 'info',
+        confirmButtonText: 'Saya Mengerti',
+        confirmButtonColor: '#6B8E6B',
+        background: '#FDFBF7',
+        customClass: { popup: '!rounded-[2rem]' },
+        width: '90%'
+      });
     };
 
     return (
