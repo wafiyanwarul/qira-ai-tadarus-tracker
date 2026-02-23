@@ -88,18 +88,28 @@ export default function Home() {
       navigator.geolocation.getCurrentPosition(async (position) => {
         const { latitude: lat, longitude: lng } = position.coords;
         try {
-          // 1. Ambil Jadwal Sholat
+          // 1. Ambil Jadwal Sholat (Ini biarin di frontend, karena cuma API jam sholat publik)
           const res = await fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=11`);
           const data = await res.json();
           setPrayerTimings(data.data.timings);
 
-          // 2. NEW: Ambil Nama Kota & Negara akurat
-          const locRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=id`);
-          const locData = await locRes.json();
-          // Prioritaskan nama kota/kabupaten lokal, baru provinsi kalau kotanya kosong
-          const exactCity = locData.city || locData.locality || locData.principalSubdivision;
-          setLocationName(`${exactCity}, ${locData.countryName}`);
-        } catch (err) { setLocationName("Lokasi tak diketahui"); }
+          // 2. Lempar koordinat ke Backend kita (BigDataCloud dihapus dari sini!)
+          if (session?.user) {
+            const backendRes = await fetch('/api/location', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ lat, lng }) // Cuma kirim angka koordinat ke backend
+            });
+            const backendData = await backendRes.json();
+
+            // 3. Update UI dari response bersih backend
+            if (backendData.success) {
+              setLocationName(backendData.location);
+            }
+          }
+        } catch (err) {
+          setLocationName("Lokasi tak diketahui");
+        }
       }, () => setLocationName("Akses Lokasi Ditolak"));
     }
   };
