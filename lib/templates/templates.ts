@@ -65,3 +65,37 @@ export const getKhatamPrayerHtml = (targetKhatam: number) => `
     </div>
   </div>
 `;
+
+export const termsAndConditionsHtml = `
+  <div class="text-left text-sm space-y-4 max-h-[60vh] overflow-y-auto pr-2 text-[#4A4238]">
+    <p>Selamat datang di <strong>Qira.ai</strong>. Dengan mendaftar dan menggunakan layanan ini, Anda menyetujui ketentuan berikut:</p>
+    
+    <div class="space-y-2 mt-4">
+      <h3 class="font-bold text-[#3E4F3E]">1. Privasi & Data Akun</h3>
+      <p class="text-xs text-[#8C8273] leading-relaxed">Kami menggunakan Google OAuth untuk autentikasi. Qira.ai hanya memproses nama, alamat email, dan foto profil publik Anda untuk keperluan identitas akun. Kami tidak menjual atau membagikan data ini kepada pihak ketiga.</p>
+    </div>
+
+    <div class="space-y-2 mt-4">
+      <h3 class="font-bold text-[#3E4F3E]">2. Izin Mikrofon & Pemrosesan Audio</h3>
+      <p class="text-xs text-[#8C8273] leading-relaxed">Fitur pelaporan tadarus membutuhkan akses mikrofon secara *real-time*. Audio yang Anda rekam hanya diproses secara instan oleh sistem kecerdasan buatan (AI) kami untuk keperluan transkripsi dan <strong>tidak disimpan secara permanen</strong> di server kami.</p>
+    </div>
+
+    <div class="space-y-2 mt-4">
+      <h3 class="font-bold text-[#3E4F3E]">3. Akses Data Lokasi</h3>
+      <p class="text-xs text-[#8C8273] leading-relaxed">Izin lokasi (GPS) diwajibkan semata-mata untuk mengkalkulasi jadwal sholat yang akurat di wilayah Anda secara dinamis, serta keperluan analitik demografi anonim untuk peningkatan kualitas layanan.</p>
+    </div>
+
+    <div class="space-y-2 mt-4">
+      <h3 class="font-bold text-[#3E4F3E]">4. Kebijakan Penggunaan Wajar (Fair Use)</h3>
+      <p class="text-xs text-[#8C8273] leading-relaxed">Untuk menjaga stabilitas server, setiap pengguna dibatasi kuota energi harian (maksimal 10x setoran per hari). Segala bentuk manipulasi, penggunaan *bot*, atau eksploitasi sistem (DDoS) akan ditindak dengan pemblokiran akun permanen tanpa pemberitahuan.</p>
+    </div>
+
+    <p class="text-[10px] italic text-[#A35941] mt-6 font-semibold">Dokumen ini terakhir diperbarui: Februari 2026</p>
+
+    <div class="mt-6 pt-4 border-t border-[#E5E0D8] text-center">
+      <p class="text-[9px] text-[#A39A8E] font-medium tracking-[0.15em] uppercase opacity-80">
+        A Product by <strong class="text-[#6B8E6B]">Illusphere Creative</strong>
+      </p>
+    </div>
+  </div>
+`;

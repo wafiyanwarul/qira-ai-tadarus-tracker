@@ -6,7 +6,7 @@ import MarqueeBanner from "@/components/MarqueeBanner";
 import Swal from 'sweetalert2';
 import confetti from 'canvas-confetti';
 import { useSession, signIn, signOut } from "next-auth/react";
-import { getKhatamPrayerHtml } from "@/lib/templates/templates";
+import { getKhatamPrayerHtml, termsAndConditionsHtml } from "@/lib/templates/templates";
 
 const QiraLogo = () => (
   <svg viewBox="0 0 24 24" fill="none" className="w-7 h-7">
@@ -322,25 +322,85 @@ export default function Home() {
   }
 
   if (status === "unauthenticated") {
-    return (
-      <main className="min-h-screen bg-[#FDFBF7] flex flex-col items-center justify-center p-6" style={{ backgroundImage: `url("https://www.transparenttextures.com/patterns/arabesque.png")` }}>
-        <div className="bg-white/95 backdrop-blur-md p-8 rounded-[2.5rem] shadow-xl text-center max-w-sm w-full border border-[#E5E0D8]">
-          <div className="flex justify-center mb-4"><QiraLogo /></div>
-          <h1 className="text-3xl font-extrabold text-[#3E4F3E] mb-2">Qira.ai</h1>
-          <p className="text-[#8C8273] text-sm mb-8 font-medium">Asisten Tadarus Pintar</p>
+    const showTermsAndConditions = (e: React.MouseEvent) => {
+      e.preventDefault();
+      const showTermsAndConditions = (e: React.MouseEvent) => {
+        e.preventDefault();
+        Swal.fire({
+          title: 'Syarat & Ketentuan Layanan',
+          html: termsAndConditionsHtml, // <--- JADI SEPENDEK INI DOANG SEKARANG!
+          icon: 'info',
+          confirmButtonText: 'Saya Mengerti',
+          confirmButtonColor: '#6B8E6B',
+          background: '#FDFBF7',
+          customClass: { popup: '!rounded-[2rem]' },
+          width: '90%'
+        });
+      };
+    };
 
-          <button
-            onClick={() => signIn("google")}
-            className="w-full bg-white text-[#4A4238] border-2 border-[#E5E0D8] font-bold py-3.5 px-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-gray-50 hover:border-[#6B8E6B] hover:shadow-lg transition-all duration-300 cursor-pointer"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 48 48">
-              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
-              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
-              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
-              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
-            </svg>
-            Masuk dengan Google
-          </button>
+    return (
+      <main className="min-h-screen bg-[#FDFBF7] flex flex-col items-center justify-center p-6 relative overflow-hidden" style={{ backgroundImage: `url("https://www.transparenttextures.com/patterns/arabesque.png")` }}>
+
+        {/* BADGE VERSI DI HALAMAN LOGIN */}
+        <div className="absolute top-6 right-6 md:top-8 md:right-8 bg-[#6B8E6B] backdrop-blur-md border border-[#5a7a5a] px-3 py-1.5 rounded-full shadow-md flex items-center gap-1.5 z-50 cursor-default">
+          <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse shadow-[0_0_5px_rgba(255,255,255,0.8)]"></div>
+          <span className="text-[10px] font-black text-white tracking-widest uppercase drop-shadow-sm">Qira.ai v2.5</span>
+        </div>
+
+        {/* TEKS SAMBUTAN DI ATAS KONTAINER */}
+        <div className="text-center mb-8 z-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#EAF0EA] border border-[#c7dcc7] text-[#4A6B4A] text-[10px] font-black uppercase tracking-[0.2em] mb-4 shadow-sm">
+            <span>🌙 Ramadhan 1447 H</span>
+          </div>
+          <h2 className="text-3xl md:text-4xl font-black text-[#3E4F3E] tracking-tight mb-3">Tadarus Lebih Bermakna</h2>
+
+          {/* NEW: Tambahan <br /> untuk mematahkan baris dengan cantik */}
+          <p className="text-[#8C8273] font-medium text-sm md:text-base max-w-sm md:max-w-md mx-auto leading-relaxed">
+            Pantau progres, kejar target khatam, dan raih<br />
+            keberkahan bersama{" "}
+            <span className="inline-flex items-center px-3 py-[2px] bg-white border border-[#E5E0D8] rounded-full shadow-sm text-[#3E4F3E] font-extrabold text-sm ml-0.5 align-baseline relative -top-[1px]">
+              Qira.ai
+            </span>
+          </p>
+        </div>
+
+        {/* KONTAINER UTAMA */}
+        <div className="bg-white/95 backdrop-blur-xl p-10 md:p-12 rounded-[2.5rem] shadow-2xl text-center max-w-md w-full border border-[#E5E0D8] relative overflow-hidden z-10 group transition-all duration-500 hover:shadow-3xl hover:border-[#c7dcc7]">
+
+          {/* EFEK KALIGRAFI KUFIC MODERN */}
+          <div className="absolute inset-0 opacity-[0.04] pointer-events-none transition-opacity duration-500 group-hover:opacity-[0.06]"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 20.5V18H0v-2h20v-2H0v-2h20v-2H0V8h20V6H0V4h20V2H0V0h22v20h2v-2h2v2h2v-2h2v2h2v-2h2v2h2v-2h2v2h2v-2h2v2h2v-2h2v2h2v-2h2v2h-2v2h2v2h-2v2h2v2h-2v2h2v2h-2v2h2v2h-2v2h2v2h-2v2h2v2h-2v2h2v2h-2v2h2v2h-2v2h2v2h-2v2h2v2h-2v2h2v2h-2v2h2v2h-2v2h2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2v-2h-2v2h-2V20.5H20z' fill='%236B8E6B' fill-rule='evenodd'/%3E%3C/svg%3E")`,
+              backgroundSize: '30px 30px'
+            }}
+          />
+
+          <div className="absolute -top-12 -right-12 w-40 h-40 bg-[#FFF4F1] rounded-full blur-3xl opacity-60 pointer-events-none"></div>
+          <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-[#EAF0EA] rounded-full blur-3xl opacity-60 pointer-events-none"></div>
+
+          <div className="relative z-10">
+            <div className="flex justify-center mb-5 drop-shadow-sm transition-transform duration-500 hover:scale-110"><QiraLogo /></div>
+            <h1 className="text-4xl font-extrabold text-[#3E4F3E] mb-2 tracking-tight">Qira.ai</h1>
+            <p className="text-[#8C8273] text-sm mb-10 font-bold uppercase tracking-widest">Asisten Tadarus Pintar</p>
+
+            <button
+              onClick={() => signIn("google")}
+              className="w-full bg-white text-[#4A4238] border-[1.5px] border-[#E5E0D8] font-bold py-3.5 px-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-[#F9F8F6] hover:border-[#6B8E6B] hover:shadow-md transition-all duration-300 cursor-pointer group/btn"
+            >
+              <svg className="w-5 h-5 transition-transform duration-300 group-hover/btn:scale-110" viewBox="0 0 48 48">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+              </svg>
+              Masuk dengan Google
+            </button>
+
+            <div className="mt-6 text-[9px] font-medium text-[#A39A8E] uppercase tracking-wider">
+              Dengan masuk, kamu menyetujui <a href="#" onClick={showTermsAndConditions} className="underline font-bold hover:text-[#6B8E6B] transition-colors cursor-pointer">Syarat & Ketentuan</a>
+            </div>
+          </div>
         </div>
       </main>
     );
@@ -351,7 +411,7 @@ export default function Home() {
 
       <div className="absolute top-6 right-6 md:top-8 md:right-8 bg-[#6B8E6B] backdrop-blur-md border border-[#5a7a5a] px-3 py-1.5 rounded-full shadow-md flex items-center gap-1.5 z-50 cursor-default">
         <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse shadow-[0_0_5px_rgba(255,255,255,0.8)]"></div>
-        <span className="text-[10px] font-black text-white tracking-widest uppercase drop-shadow-sm">Qira.ai v2.0</span>
+        <span className="text-[10px] font-black text-white tracking-widest uppercase drop-shadow-sm">Qira.ai v2.5</span>
       </div>
 
       {/* overflow-hidden dihapus dari sini */}
@@ -384,7 +444,7 @@ export default function Home() {
                 {/* MENU DROPDOWN (HANYA MUNCUL SEKALI DI SINI) */}
                 {isDropdownOpen && (
                   <div className="absolute top-full left-0 mt-2 w-full min-w-[140px] bg-white border border-[#E5E0D8] rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                    {[1, 2, 3, 4, 5, 6].map(num => (
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
                       <div
                         key={num}
                         onClick={() => { setTargetKhatam(num); setIsDropdownOpen(false); }}
