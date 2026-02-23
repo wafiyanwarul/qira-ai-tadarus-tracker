@@ -45,10 +45,11 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
+  lastLocation  String?
+  lat           String?   
+  lng           String?   
   accounts      Account[]
   sessions      Session[]
-  
-  // Relasi ke data tadarus
   progressLogs  ProgressLog[] 
 }
 
@@ -62,8 +63,6 @@ model VerificationToken {
 // --- APP MODELS ---
 model ProgressLog {
   id             String   @id @default(uuid())
-  
-  // BERUBAH: Sekarang nyambung langsung ke ID User dari Google
   userId         String   
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
