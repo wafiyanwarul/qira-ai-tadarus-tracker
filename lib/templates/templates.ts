@@ -99,3 +99,55 @@ export const termsAndConditionsHtml = `
     </div>
   </div>
 `;
+
+export const guideHtml = `
+  <div class="text-left space-y-3 max-h-[65vh] overflow-y-auto pr-2 pb-2 mt-2">
+    
+    <div class="group bg-white border border-[#E5E0D8] p-4 rounded-2xl shadow-sm hover:shadow-md hover:border-[#c7dcc7] transition-all cursor-default relative overflow-hidden">
+      <div class="absolute right-0 top-0 w-16 h-16 bg-[#EAF0EA] rounded-bl-full opacity-30 pointer-events-none"></div>
+      <div class="flex items-start gap-3 relative z-10">
+        <div class="bg-[#EAF0EA] p-2.5 rounded-xl text-lg group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300">🎙️</div>
+        <div>
+          <h3 class="font-extrabold text-[#3E4F3E] text-sm mb-1.5">Cara Setoran Suara</h3>
+          <p class="text-xs text-[#8C8273] leading-relaxed mb-2">Sebutkan nama <b>Surah</b> dan <b>Ayat</b> dengan jelas agar AI dapat mencatatnya.</p>
+          <div class="space-y-1.5">
+            <div class="bg-[#F9F8F6] border border-[#c7dcc7] rounded-lg p-2 text-[11px] text-[#4A6B4A] flex gap-2"><span class="font-bold">✅ Benar:</span> "Saya baca Surah Yasin ayat satu sampai sepuluh."</div>
+            <div class="bg-[#FFF4F1] border border-[#FADCD5] rounded-lg p-2 text-[11px] text-[#A35941] flex gap-2"><span class="font-bold">❌ Salah:</span> "Tadi aku ngaji juz 2 halaman 20." (Sistem butuh spesifik ayat)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group bg-white border border-[#E5E0D8] p-4 rounded-2xl shadow-sm hover:shadow-md transition-all cursor-default">
+      <div class="flex items-start gap-3">
+        <div class="bg-blue-50 p-2.5 rounded-xl text-lg group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300">📍</div>
+        <div>
+          <h3 class="font-extrabold text-[#3E4F3E] text-sm mb-1.5">Sistem Target & Akses Lokasi</h3>
+          <p class="text-xs text-[#8C8273] leading-relaxed mb-2">
+            Target halamanmu dibagi secara dinamis berdasarkan sisa waktu sholat.
+          </p>
+          <div class="bg-gray-50 border border-gray-200 rounded-lg p-2 text-[10px] text-gray-600">
+            <b>Kenapa butuh GPS?</b> Akses lokasi digunakan HANYA untuk mengambil zona waktu dan titik kordinat agar Jadwal Sholat (Subuh-Isya) di aplikasimu akurat sesuai kotamu.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group bg-white border border-[#E5E0D8] p-4 rounded-2xl shadow-sm hover:shadow-md transition-all cursor-default">
+      <div class="flex items-start gap-3">
+        <div class="bg-[#FFF4F1] p-2.5 rounded-xl text-lg group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300">⚠️</div>
+        <div>
+          <h3 class="font-extrabold text-[#D97757] text-sm mb-1.5">Aturan Anti-Curang (Error)</h3>
+          <p class="text-xs text-[#8C8273] leading-relaxed">
+            Sistem memiliki logika matematis untuk mencegah kesalahan input:
+          </p>
+          <ul class="list-disc pl-4 mt-1 text-[11px] text-[#8C8273] space-y-1">
+            <li><b>Setoran Mundur:</b> Jika kemarin kamu sampai ayat 20, lalu hari ini lapor ayat 5, sistem akan menolak.</li>
+            <li><b>Ayat Terlewat:</b> Jika kamu lapor ayat 30, tapi terakhir baca ayat 20, sistem akan memberi peringatan bahwa ayat 21-29 terlewat.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+`;

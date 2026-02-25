@@ -13,6 +13,24 @@ const redis = new Redis({
     token: env.UPSTASH_REDIS_REST_TOKEN,
 });
 
+/**
+ * GET /api/progress
+ * 
+ * Mengembalikan data progress user yang berisi tentang:
+ * 1. Total halaman yang sudah dibaca
+ * 2. Target halaman yang ingin dibaca
+ * 3. Jumlah halaman yang dibaca hari ini
+ * 4. Jumlah halaman yang harus dibaca setiap hari untuk mencapai target
+ * 5. Persentase yang sudah dibaca
+ * 6. Jumlah hari yang tersisa untuk mencapai target
+ * 7. Jumlah putaran Khatam yang sudah dibaca
+ * 8. Data log bacaan hari ini
+ * 9. Energi yang digunakan hari ini
+ * 10. Data log bacaan terakhir
+ * 
+ * Parameter:
+ * target: Opsiional, target Khatam yang ingin dicapai. Default = 1
+ */
 export async function GET(req: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
@@ -42,7 +60,11 @@ export async function GET(req: NextRequest) {
                 start: `${quranMetadata[log.startSurah]?.name} ${log.startAyah}`,
                 end: `${quranMetadata[log.endSurah]?.name} ${log.endAyah}`,
                 pages: log.totalPagesRead,
-                time: new Date(log.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+                time: new Date(log.createdAt).toLocaleTimeString('id-ID', {
+                    timeZone: 'Asia/Jakarta',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }),
                 arabic: quranData?.arabic || null,
                 translation: quranData?.translation || null,
                 endAyahNumber: log.endAyah,

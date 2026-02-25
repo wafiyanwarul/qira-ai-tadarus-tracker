@@ -8,10 +8,19 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { Redis } from '@upstash/redis';
 
+export const maxDuration = 60; // Mengizinkan Vercel menunggu maksimal 1 menit (tidak mati di 10 detik)
+
 // KITA CUMA PAKAI GROQ SEKARANG! (Gemini dihapus)
 const groq = new Groq({ apiKey: env.GROQ_API_KEY });
 const redis = new Redis({ url: env.UPSTASH_REDIS_REST_URL, token: env.UPSTASH_REDIS_REST_TOKEN });
 
+/**
+ * POST /api/transcribe
+ * @description Proses data tadarus AI (Whisper) menjadi format JSON yang valid.
+ * @param {Request} req - Request object containing information about the current request.
+ * @return {Promise<Response>} - Response object containing the result of the request.
+ * @throws {Response} - If the request fails, it throws an error response with a 400 or 500 status code.
+ */
 export async function POST(req: Request) {
     try {
         const session = await getServerSession(authOptions);
@@ -223,8 +232,15 @@ export async function POST(req: Request) {
             isKhatam // Bendera Checkpoint
         });
 
-    } catch (error) {
-        console.error('API Error:', error);
-        return NextResponse.json({ error: 'Gagal memproses data di server.' }, { status: 500 });
+    } catch (error: any) {
+        console.error("Groq/Transcribe Error:", error);
+        // if error from internet connection or timeout (ECONNRESET) 
+        if (error.code === 'ECONNRESET' || error.message.includes('fetch')) {
+            return NextResponse.json({ 
+                success: false, 
+                error: "Koneksi ke AI terputus. Pastikan rekaman tidak terlalu panjang dan internet stabil." 
+            }, { status: 500 });
+        }
+        return NextResponse.json({ success: false, error: "Gagal memproses suara. Coba lagi." }, { status: 500 });
     }
 }
