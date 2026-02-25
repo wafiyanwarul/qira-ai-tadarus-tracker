@@ -6,15 +6,22 @@ const redis = new Redis({
     token: env.UPSTASH_REDIS_REST_TOKEN,
 });
 
+/**
+ * Fetch ayah from Al-Quran API with caching.
+ * @param {number} surah - The number of the surah.
+ * @param {number} ayah - The number of the ayah.
+ * @returns {Promise<{ arabic: string, translation: string }>} - The ayah with its arabic text and Indonesian translation.
+ * @throws {Error} - If there is an error while fetching the ayah.
+ */
 export async function getAyahWithCache(surah: number, ayah: number) {
     const cacheKey = `quran:${surah}:${ayah}`;
 
     try {
-        // 1. Cek apakah teks Arab-nya udah ada di kulkas (Redis)
+        // 1. Cek - is the arabic text already in (Redis)
         const cached = await redis.get<{ arabic: string, translation: string }>(cacheKey);
         if (cached) return cached;
 
-        // 2. Kalau belum ada, beli ke "pasar" (API Resmi)
+        // 2. (Official API)
         // Pakai koma untuk narik Arab (quran-uthmani) dan Terjemahan (id.indonesian) sekaligus
         const res = await fetch(`https://api.alquran.cloud/v1/ayah/${surah}:${ayah}/editions/quran-uthmani,id.indonesian`);
         const data = await res.json();
@@ -25,7 +32,7 @@ export async function getAyahWithCache(surah: number, ayah: number) {
                 translation: data.data[1].text
             };
 
-            // 3. Simpan di kulkas Redis (Expired 30 hari karena teks Al-Quran ga akan berubah)
+            // 3. Save to Redis (Expired 30 days because the Al-Quran text will never change, so no need to refresh it too often)
             await redis.set(cacheKey, result, { ex: 2592000 });
             return result;
         }
